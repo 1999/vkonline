@@ -1,0 +1,22 @@
+{
+	"name" : "__MSG_appName__",
+	"version" : "1.0.0",
+	"description" : "__MSG_appDescription__",
+	"default_locale" : "ru",
+	"icons" : {
+		"128" : "pic/icon128.png",
+		"48" : "pic/icon48.png",
+		"16" : "pic/icon16.png"
+	},
+	"browser_action" : {
+		"default_icon": "pic/icon.png",
+		"default_title": "__MSG_appName__"
+	},
+	"background_page" : "background.html",
+	"options_page" : "options.html",
+	"content_scripts" : [{
+		"matches" : ["*://api.vk.com/*"],
+		"js" : ["js/contentscript.js"]
+	}], "minimum_chrome_version" : "12",
+	"permissions" : ["background", "unlimitedStorage", "tabs", "notifications", "*://*.vk.com/*"]
+}
