@@ -1,9 +1,7 @@
 if (location.href.indexOf('blank.html') !== -1 && location.href.indexOf('oauth/authorize') === -1) {
 	var hash = location.hash.substr(1);
 	if (hash.indexOf('error') !== -1) {
-		chrome.extension.sendRequest({
-			'action' : 'auth_fail'
-		});
+		chrome.extension.sendRequest({'action' : 'auth_fail'});
 	} else {
 		var data = {'action' : 'auth_success'};
 		
@@ -20,3 +18,11 @@ if (location.href.indexOf('blank.html') !== -1 && location.href.indexOf('oauth/a
 		chrome.extension.sendRequest(data);
 	}
 }
+
+document.body.addEventListener('DOMSubtreeModified', function() {
+	if (location.pathname === '/') {
+		chrome.extension.sendRequest({'action' : 'logout'});
+	} else {
+		
+	}
+}, false);

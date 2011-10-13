@@ -120,17 +120,25 @@
 			} else {
 				req.call(tokens[userId], 'messages.get', {'filters' : '1', 'limit' : 1}, function(res) {
 					var totalNew = (res === 0) ? 0 : res[0];
+					if (totalNew) {
+						chrome.browserAction.setBadgeBackgroundColor({'color' : [192, 0, 0, 128]})
+						chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
+					} else {
+						chrome.browserAction.setBadgeText({'text' : ''});
+					}
+					
+					(function() {
+						var callee = arguments.callee;
+					})();
 					
 					req.call(tokens[userId], 'messages.getLongPollServer', function(res) {
-						// res.ts
+						//alert(JSON.stringify(res)); // key server ts
 					}, function(err) {
 						//window.setTimeout(callee, 1000);
 					});
 				}, function() {
 					
 				});
-				
-				chrome.browserAction.setBadgeText({'text' : 'yeah'});
 			}
 		}, function() {
 			chrome.browserAction.setBadgeText({'text' : 'X'});
@@ -187,6 +195,12 @@
 						});
 					});
 				});
+				
+				break;
+			
+			case 'logout' :
+				chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]})
+				chrome.browserAction.setBadgeText({'text' : 'X'});
 				
 				break;
 		}
