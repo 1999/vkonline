@@ -1,9 +1,3 @@
-chrome.browserAction.onClicked.addListener(function(tab) {
-	chrome.tabs.create({
-		'url' : 'http://vk.com/im'
-	});
-});
-
 var i = 0;
 chrome.browserAction.setBadgeBackgroundColor({'color' : [255, 128, 0, 255]})
 
@@ -11,6 +5,14 @@ window.setInterval(function() {
 	chrome.browserAction.setBadgeText({'text' : i.toString()});
 	i += 1;
 }, 1000);
+
+chrome.browserAction.onClicked.addListener(function(tab) {
+	i = 0;
+	
+	chrome.tabs.create({
+		'url' : 'http://vk.com/im'
+	});
+});
 
 window.onerror = function(msg, url, line) {
 	alert(msg + ' (line: ' + line + ')');

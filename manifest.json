@@ -9,7 +9,7 @@
 		"16" : "pic/icon16.png"
 	},
 	"browser_action" : {
-		"default_icon": "pic/icon.png",
+		"default_icon": "pic/icon19.png",
 		"default_title": "__MSG_appName__"
 	},
 	"background_page" : "background.html",
