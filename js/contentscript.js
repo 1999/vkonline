@@ -17,7 +17,6 @@ if (location.href.indexOf('blank.html') !== -1 && location.href.indexOf('oauth/a
 			}
 		});
 		
-		console.log(data);
 		chrome.extension.sendRequest(data);
 	}
 }

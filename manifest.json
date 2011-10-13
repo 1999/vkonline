@@ -15,8 +15,8 @@
 	"background_page" : "background.html",
 	"options_page" : "options.html",
 	"content_scripts" : [{
-		"matches" : ["*://api.vk.com/*"],
+		"matches" : ["*://*.vkontakte.ru/*"],
 		"js" : ["js/contentscript.js"]
 	}], "minimum_chrome_version" : "12",
-	"permissions" : ["background", "unlimitedStorage", "tabs", "notifications", "*://*.vk.com/*"]
+	"permissions" : ["background", "unlimitedStorage", "tabs", "notifications", "*://*.vkontakte.ru/*"]
 }
