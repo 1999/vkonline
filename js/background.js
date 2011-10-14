@@ -2,6 +2,9 @@
 	var VkAppId = 2642167,
 		VkAppScope = ['messages'];
 	
+	var activeAccount = [false, false];
+	
+	
 	var req = function(method, params, fnOk, fnFail) {
 		if (typeof params === 'function') {
 			fnFail = fnOk;
@@ -93,12 +96,12 @@
 		xhr.send();
 	};
 	
-	var fnOnLoad = function(tab) {
+	var checkUserOnload = function() {
 		chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]})
 		chrome.browserAction.setBadgeText({'text' : '...'});
 		
 		whoami(function(userId) {
-			var tokens = localStorage.getItem('tokens');
+			/*var tokens = localStorage.getItem('tokens');
 			if (tokens === null) {
 				tokens = {};
 			} else {
@@ -107,53 +110,51 @@
 				} catch (e) {
 					tokens = {};
 				}
-			}
+			}*/
 			
-			if (typeof tokens[userId] === 'undefined') {
-				chrome.browserAction.setBadgeText({'text' : '?'});
-				
-				if (typeof tab !== 'undefined') {
-					chrome.tabs.create({
-						'url' : 'http://api.vkontakte.ru/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.vkontakte.ru/blank.html&display=page&response_type=token'
-					});
-				}
-			} else {
-				req.call(tokens[userId], 'messages.get', {'filters' : '1', 'limit' : 1}, function(res) {
-					var totalNew = (res === 0) ? 0 : res[0];
-					if (totalNew) {
-						chrome.browserAction.setBadgeBackgroundColor({'color' : [192, 0, 0, 128]})
-						chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
-					} else {
-						chrome.browserAction.setBadgeText({'text' : ''});
-					}
-					
-					(function() {
-						var callee = arguments.callee;
-					})();
-					
-					req.call(tokens[userId], 'messages.getLongPollServer', function(res) {
-						//alert(JSON.stringify(res)); // key server ts
-					}, function(err) {
-						//window.setTimeout(callee, 1000);
-					});
-				}, function() {
-					
-				});
-			}
+			//if (typeof tokens[userId] === 'undefined') {
+			//	chrome.browserAction.setBadgeText({'text' : '?'});
+			//} else {
+			//	chrome.browserAction.setBadgeText({'text' : userId});
+			//}
+			
+			chrome.browserAction.setBadgeText({'text' : userId});
 		}, function() {
 			chrome.browserAction.setBadgeText({'text' : 'X'});
 		});
 	};
 	
 	// запускаем при загрузке
-	fnOnLoad();
-	
-	// и при клике на иконку
-	chrome.browserAction.onClicked.addListener(fnOnLoad);
+	checkUserOnload();
 	
 	
 	chrome.extension.onRequest.addListener(function(request, sender, sendResponse) {
 		switch (request.action) {
+			case 'state' :
+				if (request.data === false) {
+					activeAccount = [false, false];
+					chrome.browserAction.setBadgeText({'text' : 'X'});
+				} else {
+					if (/^id[0-9]+$/.test(request.data)) {
+						if (activeAccount[0] !== request.data) {
+							activeAccount = [request.data, request.data.substr(2)];
+							chrome.browserAction.setBadgeText({'text' : request.data.substr(2)});
+						}
+					} else {
+						if (activeAccount[0] !== request.data) {
+							activeAccount = [request.data, false];
+							chrome.browserAction.setBadgeText({'text' : '...'});
+							
+							req.call(w, 'resolveScreenName', {'screen_name' : request.data}, function(res) {
+								activeAccount[1] = res.object_id;
+								chrome.browserAction.setBadgeText({'text' : res.object_id.toString()});
+							});
+						}
+					}
+				}
+				
+				break;
+			
 			case 'auth_success' :
 				var tokens = localStorage.getItem('tokens');
 				if (tokens === null) {
@@ -207,6 +208,62 @@
 	});
 })(window);
 
+// открытие вкладки диалогов по клику на иконку расширения
+chrome.browserAction.onClicked.addListener(function() {
+	/*
+	 * if (typeof tab !== 'undefined') {
+					chrome.tabs.create({
+						'url' : 'http://api.vkontakte.ru/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.vkontakte.ru/blank.html&display=page&response_type=token'
+					});
+				}
+				
+				
+				
+				req.call(tokens[userId], 'messages.get', {'filters' : '1', 'limit' : 1}, function(res) {
+					var totalNew = (res === 0) ? 0 : res[0];
+					if (totalNew) {
+						chrome.browserAction.setBadgeBackgroundColor({'color' : [192, 0, 0, 128]})
+						chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
+					} else {
+						chrome.browserAction.setBadgeText({'text' : ''});
+					}
+					
+					(function() {
+						var callee = arguments.callee;
+					})();
+					
+					req.call(tokens[userId], 'messages.getLongPollServer', function(res) {
+						//alert(JSON.stringify(res)); // key server ts
+					}, function(err) {
+						//window.setTimeout(callee, 1000);
+					});
+				}, function() {
+					
+				});*/
+	
+	/*chrome.windows.getAll({'populate' : true}, function(windows) {
+		if (windows.length === 0) {
+			chrome.windows.create({}, fn);
+		} else {
+			windows.forEach(function(windowElem) {
+				windowElem.tabs.forEach(function(tab) {
+					if (tab.url === chrome.extension.getURL('main.html')) {
+						chrome.windows.update(windowElem.id, {'focused' : true});
+						chrome.tabs.update(tab.id, {'selected' : true});
+						
+						chrome.extension.sendRequest({'action' : 'notificationClicked', 'mid' : msg.mid});
+						foundAppTab = true;
+					}
+				});
+			});
+			
+			// открываем окно приложения
+			if (foundAppTab === false) {
+				fn();
+			}
+		}
+	});*/
+});
 
 
 window.onerror = function(msg, url, line) {
@@ -214,6 +271,7 @@ window.onerror = function(msg, url, line) {
 };
 
 getReady(function(fsLink, dbLink) {
+	return;
 	var Settings = new AppSettings();
 	
 	var sounds = {
@@ -222,18 +280,6 @@ getReady(function(fsLink, dbLink) {
 		'clear' : (new Audio).attr('src', chrome.extension.getURL('sound/clear.mp3')),
 		'sent' : (new Audio).attr('src', chrome.extension.getURL('sound/sent.mp3'))
 	};
-	
-	var VkAppId = 2438161,
-		VkAppScope = ['friends', 'messages', 'offline', 'photos', 'audio', 'video', 'docs'];
-	
-	var cache = {},
-		cacheAvatars = {},
-		profileStack = [],
-		syncProcess = {
-			'contacts' : false,
-			'inbox' : false,
-			'outbox' : false
-		};
 	
 	var showNotification = function(msgId) {
 		var profile = this,
