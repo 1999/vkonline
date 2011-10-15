@@ -1,11 +1,68 @@
 (function(w) {
+	/**
+	 * [...] - запрос идет
+	 * [?] - нет token, надо разрешить доступ, по клику открывается окно OAuth
+	 * [X] - не авторизован ВКонтакте
+	 * 
+	 * 
+	 * var Settings = new AppSettings();
+	
+	var sounds = {
+		'message' : (new Audio).attr('src', chrome.extension.getURL('sound/message.mp3')),
+		'error' : (new Audio).attr('src', chrome.extension.getURL('sound/error.mp3')),
+		'clear' : (new Audio).attr('src', chrome.extension.getURL('sound/clear.mp3')),
+		'sent' : (new Audio).attr('src', chrome.extension.getURL('sound/sent.mp3'))
+	};
+	 */
+	
 	var VkAppId = 2642167,
 		VkAppScope = ['messages'];
 	
 	var activeAccount = [false, false];
+	var cachedProfiles = {};
 	
+	var tokens = localStorage.getItem('tokens');
+	if (tokens === null) {
+		tokens = {};
+	} else {
+		try {
+			tokens = JSON.parse(tokens);
+		} catch (e) {
+			tokens = {};
+		}
+	}
+	
+	/**
+	 * Открытие notification
+	 */
+	var showNotification = function(data) {
+		var person = this;
+		
+		var notification = window.webkitNotifications.createNotification(person.photo, person.first_name + ' ' + person.last_name, data.message);
+		notification.onclick = function() {
+			if (typeof data.onclick === 'function') {
+				data.onclick.call(notification);
+			} else {
+				notification.cancel();
+			}
+		};
+		
+		notification.show();
+		
+		// play sound
+		//sounds.message.play();
+		
+		if (typeof data.timeout !== 'undefined') {
+			w.setTimeout(function() {
+				notification.cancel();
+			}, data.timeout*1000);
+		}
+	};
 	
 	var req = function(method, params, fnOk, fnFail) {
+		var args = arguments,
+			self = this;
+		
 		if (typeof params === 'function') {
 			fnFail = fnOk;
 			fnOk = params;
@@ -27,35 +84,37 @@
 		
 		xhr.onreadystatechange = function() {
 			if (xhr.readyState === 4) {
-				if (xhr.status === 0) {
-					if (typeof fnFail === 'function') {
-						fnFail('Can\'t connect to VK API. Maybe internet connection problems?');
-						xhr = null;
-					}
+				if (xhr.status === 0) { // нет соединения с интернетом
+					chrome.browserAction.setIcon({'path' : chrome.extension.getURL('pic/icon19_offline.png')});
+					chrome.browserAction.setBadgeText({'text' : ''});
 					
-					return;
-				}
-				
-				try {
-					var result = JSON.parse(xhr.responseText);
-				} catch (e) {
-					if (typeof fnFail === 'function') {
-						fnFail('Invalid JSON response from VK API: ' + xhr.responseText);
-					}
-					
-					xhr = null;
-					Console.trace();
-					
-					return;
-				}
-				
-				if (typeof result.error !== 'undefined') {
-					if (typeof fnFail === 'function') {
-						fnFail(result.error);
-					}
+					w.setTimeout(function() {
+						req.apply(self, args);
+					}, 1000);
 				} else {
-					if (typeof fnOk === 'function') {
-						fnOk(result.response);
+					try {
+						var result = JSON.parse(xhr.responseText);
+					} catch (e) {
+						chrome.browserAction.setIcon({'path' : chrome.extension.getURL('pic/icon19_offline.png')});
+						chrome.browserAction.setBadgeText({'text' : ''});
+						
+						w.setTimeout(function() {
+							req.apply(self, args);
+						}, 1000);
+						
+						xhr = null;
+						return;
+					}
+					
+					chrome.browserAction.setIcon({'path' : chrome.extension.getURL('pic/icon19.png')});
+					if (typeof result.error !== 'undefined') {
+						if (typeof fnFail === 'function') {
+							fnFail(result.error);
+						}
+					} else {
+						if (typeof fnOk === 'function') {
+							fnOk(result.response);
+						}
 					}
 				}
 				
@@ -97,35 +156,221 @@
 	};
 	
 	var checkUserOnload = function() {
-		chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]})
+		chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]});
 		chrome.browserAction.setBadgeText({'text' : '...'});
 		
 		whoami(function(userId) {
-			/*var tokens = localStorage.getItem('tokens');
-			if (tokens === null) {
-				tokens = {};
-			} else {
-				try {
-					tokens = JSON.parse(tokens);
-				} catch (e) {
-					tokens = {};
-				}
-			}*/
-			
-			//if (typeof tokens[userId] === 'undefined') {
-			//	chrome.browserAction.setBadgeText({'text' : '?'});
-			//} else {
-			//	chrome.browserAction.setBadgeText({'text' : userId});
-			//}
-			
 			chrome.browserAction.setBadgeText({'text' : userId});
 		}, function() {
 			chrome.browserAction.setBadgeText({'text' : 'X'});
 		});
 	};
 	
+	/**
+	 * Функции-обработчики нажатия на browser action icon
+	 */
+	var browserActionClickedFn = {
+		'guest' : function() {
+			chrome.tabs.create({'url' : 'http://vkontakte.ru'});
+		},
+		'granted' : function() {
+			chrome.tabs.create({'url' : 'http://vkontakte.ru/mail'});
+		},
+		'newbie' : function() {
+			chrome.tabs.create({'url' : 'http://api.vkontakte.ru/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.vkontakte.ru/blank.html&display=page&response_type=token'});
+		}
+	};
+	
+	/**
+	 * Привязка обработчика нажатия на browser action icon
+	 */
+	var browserActionClickedAttach = function(addFnType) {
+		Object.keys(browserActionClickedFn).forEach(function(fnType) {
+			chrome.browserAction.onClicked.removeListener(browserActionClickedFn[fnType]);
+		});
+		
+		if (typeof addFnType !== 'undefined') {
+			chrome.browserAction.onClicked.addListener(browserActionClickedFn[addFnType]);
+		}
+	};
+	
+	var startUserSession = function() {
+		var activeUid = tokens[activeAccount[1]];
+		
+		req.call(activeUid, 'messages.getLongPollServer', function(longPollRes) {
+			if (tokens[activeAccount[1]] !== activeUid) { // проверка на смену пользователя
+				return;
+			}
+			
+			req.call(activeUid, 'messages.get', {'filters' : 1, 'count' : 1}, function(res) {
+				var totalNew = (res.constructor === Array) ? res[0] : 0;
+				if (tokens[activeAccount[1]] !== activeUid) { // проверка на смену пользователя
+					return;
+				}
+				
+				if (totalNew) {
+					chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
+				} else {
+					chrome.browserAction.setBadgeText({'text' : ''});
+				}
+				
+				// начинаем цикл LongPoll-запросов
+				(function() {
+					var callee = arguments.callee;
+					
+					var xhr = new XMLHttpRequest(),
+						url = 'http://' + longPollRes.server + '?act=a_check&key=' + longPollRes.key + '&ts=' + longPollRes.ts + '&wait=25&mode=0';
+					
+					xhr.open('GET', url, true);
+					xhr.onreadystatechange = function() {
+						if (xhr.readyState === 4) {
+							if (tokens[activeAccount[1]] !== activeUid) { // проверка на смену пользователя
+								return;
+							}
+							
+							if (xhr.status === 0) { // нет соединения с интернетом
+								chrome.browserAction.setIcon({'path' : chrome.extension.getURL('pic/icon19_offline.png')});
+								/*chrome.browserAction.setBadgeText({'text' : ''});*/
+								
+								w.setTimeout(callee, 1000);
+							} else {
+								try {
+									var result = JSON.parse(xhr.responseText);
+									if (typeof result.failed !== 'undefined') { // ключ устарел (code 2) или такие старые события LongPoll-сервер уже не отдает
+										w.setTimeout(startUserSession, 1000);
+									} else {
+										result.updates.forEach(function(data) {
+											switch (data[0]) {
+												case 2 :
+													if (data[2] & 1) { // отметили как новое
+														totalNew += 1;
+														chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
+													} else if (data[2] & 256) { // прочитано
+														totalNew -= 1;
+														
+														if (totalNew) {
+															chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
+														} else {
+															chrome.browserAction.setBadgeText({'text' : ''});
+														}
+													}
+													
+													break;
+												
+												case 4 :
+													if (data[2] & 2) { // исходящее сообщение
+														return;
+													}
+													
+													if (data[2] & 1) { // новое
+														totalNew += 1;
+														chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
+														
+														var uid = data[3];
+														var fn = function() {
+															showNotification.call(cachedProfiles[uid], {
+																'message' : data[6],
+																'timeout' : 3,
+																'onclick' : function() {
+																	this.cancel();
+																	chrome.tabs.create({'url' : 'http://vkontakte.ru/mail?act=show&id=' + data[1]});
+																}
+															});
+														};
+														
+														if (typeof cachedProfiles[uid] === 'undefined') {
+															req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
+																cachedProfiles[uid] = res[0];
+																fn();
+															}, function(err) {
+																
+															});
+														} else {
+															fn();
+														}
+													}
+													
+													break;
+												
+												case 8 :
+													var uid = -data[1];
+													var fn = function() {
+														var i18msg = (cachedProfiles[uid].sex === '1') ? 'isOnlineF' : 'isOnlineM';
+														showNotification.call(cachedProfiles[uid], {
+															'message' : chrome.i18n.getMessage(i18msg),
+															'timeout' : 3
+														});
+													};
+													
+													if (typeof cachedProfiles[uid] === 'undefined') {
+														req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
+															cachedProfiles[uid] = res[0];
+															fn();
+														}, function(err) {
+															
+														});
+													} else {
+														fn();
+													}
+													
+													break;
+												
+												case 9 :
+													var uid = -data[1];
+													var fn = function() {
+														var i18msg = (cachedProfiles[uid].sex === '1') ? 'isOfflineF' : 'isOfflineM';
+														showNotification.call(cachedProfiles[uid], {
+															'message' : chrome.i18n.getMessage(i18msg),
+															'timeout' : 3
+														});
+													};
+													
+													if (typeof cachedProfiles[uid] === 'undefined') {
+														req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
+															cachedProfiles[uid] = res[0];
+															fn();
+														}, function(err) {
+															
+														});
+													} else {
+														fn();
+													}
+													
+													break;
+											}
+										});
+										
+										if (tokens[activeAccount[1]] !== activeUid) { // проверка на смену пользователя
+											return;
+										}
+										
+										longPollRes.ts = result.ts;
+										callee();
+									}
+								} catch (e) {
+									w.setTimeout(callee, 1000);
+									
+									xhr = null;
+									return;
+								}
+							}
+							
+							xhr = null;
+						}
+					};
+					
+					xhr.send();
+				})();
+			}, function(err) {
+				
+			})
+		}, function(err) {
+			
+		});
+	};
+	
 	// запускаем при загрузке
-	checkUserOnload();
+	//checkUserOnload();
 	
 	
 	chrome.extension.onRequest.addListener(function(request, sender, sendResponse) {
@@ -133,21 +378,43 @@
 			case 'state' :
 				if (request.data === false) {
 					activeAccount = [false, false];
+					
+					chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]})
+					chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('notAuthorized')});
 					chrome.browserAction.setBadgeText({'text' : 'X'});
+					
+					browserActionClickedAttach('guest');
 				} else {
+					var fn = function(userId) {
+						if (typeof tokens[userId] === 'undefined') { // еще нет доступа
+							chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]})
+							chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('notGranted')});
+							chrome.browserAction.setBadgeText({'text' : '?'});
+							
+							browserActionClickedAttach('newbie');
+						} else {
+							chrome.browserAction.setBadgeText({'text' : '...'});
+							chrome.browserAction.setBadgeBackgroundColor({'color' : [255, 0, 0, 128]})
+							chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('extName')});
+							
+							startUserSession();
+							browserActionClickedAttach('granted');
+						}
+					};
+					
 					if (/^id[0-9]+$/.test(request.data)) {
 						if (activeAccount[0] !== request.data) {
 							activeAccount = [request.data, request.data.substr(2)];
-							chrome.browserAction.setBadgeText({'text' : request.data.substr(2)});
+							fn(request.data.substr(2));
 						}
 					} else {
 						if (activeAccount[0] !== request.data) {
 							activeAccount = [request.data, false];
-							chrome.browserAction.setBadgeText({'text' : '...'});
 							
+							// получаем UID
 							req.call(w, 'resolveScreenName', {'screen_name' : request.data}, function(res) {
-								activeAccount[1] = res.object_id;
-								chrome.browserAction.setBadgeText({'text' : res.object_id.toString()});
+								activeAccount[1] = res.object_id.toString();
+								fn(res.object_id.toString());
 							});
 						}
 					}
@@ -156,17 +423,6 @@
 				break;
 			
 			case 'auth_success' :
-				var tokens = localStorage.getItem('tokens');
-				if (tokens === null) {
-					tokens = {};
-				} else {
-					try {
-						tokens = JSON.parse(tokens);
-					} catch (e) {
-						tokens = {};
-					}
-				}
-				
 				tokens[request.uid] = request.token;
 				localStorage.setItem('tokens', JSON.stringify(tokens));
 				
@@ -181,7 +437,12 @@
 					});
 				});
 				
-				// TODO презагрузка бэйджа
+				chrome.browserAction.setBadgeText({'text' : '...'});
+				chrome.browserAction.setBadgeBackgroundColor({'color' : [255, 0, 0, 128]})
+				chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('extName')});
+				
+				startUserSession();
+				browserActionClickedAttach('granted');
 				
 				break;
 			
@@ -198,364 +459,11 @@
 				});
 				
 				break;
-			
-			case 'logout' :
-				chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]})
-				chrome.browserAction.setBadgeText({'text' : 'X'});
-				
-				break;
 		}
 	});
+	
+	
+	w.onerror = function(msg, url, line) {
+		alert(msg + ' (line: ' + line + ')');
+	};
 })(window);
-
-// открытие вкладки диалогов по клику на иконку расширения
-chrome.browserAction.onClicked.addListener(function() {
-	/*
-	 * if (typeof tab !== 'undefined') {
-					chrome.tabs.create({
-						'url' : 'http://api.vkontakte.ru/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.vkontakte.ru/blank.html&display=page&response_type=token'
-					});
-				}
-				
-				
-				
-				req.call(tokens[userId], 'messages.get', {'filters' : '1', 'limit' : 1}, function(res) {
-					var totalNew = (res === 0) ? 0 : res[0];
-					if (totalNew) {
-						chrome.browserAction.setBadgeBackgroundColor({'color' : [192, 0, 0, 128]})
-						chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
-					} else {
-						chrome.browserAction.setBadgeText({'text' : ''});
-					}
-					
-					(function() {
-						var callee = arguments.callee;
-					})();
-					
-					req.call(tokens[userId], 'messages.getLongPollServer', function(res) {
-						//alert(JSON.stringify(res)); // key server ts
-					}, function(err) {
-						//window.setTimeout(callee, 1000);
-					});
-				}, function() {
-					
-				});*/
-	
-	/*chrome.windows.getAll({'populate' : true}, function(windows) {
-		if (windows.length === 0) {
-			chrome.windows.create({}, fn);
-		} else {
-			windows.forEach(function(windowElem) {
-				windowElem.tabs.forEach(function(tab) {
-					if (tab.url === chrome.extension.getURL('main.html')) {
-						chrome.windows.update(windowElem.id, {'focused' : true});
-						chrome.tabs.update(tab.id, {'selected' : true});
-						
-						chrome.extension.sendRequest({'action' : 'notificationClicked', 'mid' : msg.mid});
-						foundAppTab = true;
-					}
-				});
-			});
-			
-			// открываем окно приложения
-			if (foundAppTab === false) {
-				fn();
-			}
-		}
-	});*/
-});
-
-
-window.onerror = function(msg, url, line) {
-	alert(msg + ' (line: ' + line + ')');
-};
-
-getReady(function(fsLink, dbLink) {
-	return;
-	var Settings = new AppSettings();
-	
-	var sounds = {
-		'message' : (new Audio).attr('src', chrome.extension.getURL('sound/message.mp3')),
-		'error' : (new Audio).attr('src', chrome.extension.getURL('sound/error.mp3')),
-		'clear' : (new Audio).attr('src', chrome.extension.getURL('sound/clear.mp3')),
-		'sent' : (new Audio).attr('src', chrome.extension.getURL('sound/sent.mp3'))
-	};
-	
-	var showNotification = function(msgId) {
-		var profile = this,
-			msg = cache[profile[1]].inbox[msgId],
-			contact = cache[profile[1]].contacts[msg.uid];
-		
-		avatarExists(contact, function(blobUrl) {
-			var img = new Image();
-			img.onload = function() {
-				var canvas = document.createElement('canvas').attr({'width' : 50, 'height' : 50});
-				canvas.getContext('2d').drawImageCentered(img, 50, 50);
-				
-				var notification = window.webkitNotifications.createNotification(canvas.toDataURL(), contact.first_name + ' ' + contact.last_name, msg.body.replace(/<br>/g, '\n'));
-				notification.onclick = function() {
-					notification.cancel();
-					
-					// ищем вкладку с приложением
-					var foundAppTab = false;
-					var fn = function() {
-						chrome.tabs.create({
-							'url' : chrome.extension.getURL('main.html')
-						}, function() {
-							chrome.extension.sendRequest({'action' : 'notificationClicked', 'mid' : msgId});
-						});
-					};
-							
-					chrome.windows.getAll({'populate' : true}, function(windows) {
-						if (windows.length === 0) {
-							chrome.windows.create({}, fn);
-						} else {
-							windows.forEach(function(windowElem) {
-								windowElem.tabs.forEach(function(tab) {
-									if (tab.url === chrome.extension.getURL('main.html')) {
-										chrome.windows.update(windowElem.id, {'focused' : true});
-										chrome.tabs.update(tab.id, {'selected' : true});
-										
-										chrome.extension.sendRequest({'action' : 'notificationClicked', 'mid' : msg.mid});
-										foundAppTab = true;
-									}
-								});
-							});
-							
-							// открываем окно приложения
-							if (foundAppTab === false) {
-								fn();
-							}
-						}
-					});
-				};
-				
-				notification.show();
-				
-				// play sound
-				sounds.message.play();
-			};
-			
-			img.src = blobUrl;
-		});
-	};
-	
-	
-	
-	var reqLongPoll = function() {
-		chrome.extension.sendRequest({'action' : 'finishedMailSync'});
-		
-		var profile = profileStack.last(),
-			permStateInbox = localStorage.getItem('perm_inbox_' + profile[1]),
-			permStateOutbox = localStorage.getItem('perm_outbox_' + profile[1]),
-			pollData = longPollData[profile[1]],
-			ts = localStorage.getItem('lpts_' + profile[1]);
-		
-		if (permStateInbox === null || permStateOutbox === null) {
-			mailSyncProcess();
-			return;
-		}
-		
-		// получаем параметры LongPoll-сервера, если нужно
-		if (typeof pollData === 'undefined') {
-			(function() {
-				var callee = arguments.callee;
-				
-				req.call(profile, 'messages.getLongPollServer', function(res) {
-					longPollData[profile[1]] = res;
-					
-					var existingTs = localStorage.getItem('lpts_' + profile[1]);
-					if (existingTs === null) {
-						localStorage.setItem('lpts_' + profile[1], res.ts);
-					}
-					
-					window.setTimeout(reqLongPoll, 350);
-				}, function(err) {
-					Console.error(err);
-					window.setTimeout(callee, 1000);
-				});
-			})();
-			
-			return;
-		}
-		
-		var reqFailFn = function(err) {
-			Console.warn(err);
-			window.setTimeout(reqLongPoll, 1000);
-		};
-		
-		var xhr = new XMLHttpRequest(),
-			url = 'http://' + pollData.server.replace('vkontakte.ru', 'vk.com') + '?act=a_check&key=' + pollData.key + '&ts=' + ts + '&wait=25&mode=2';
-		
-		xhr.open('GET', url, true);
-		xhr.onreadystatechange = function() {
-			if (xhr.readyState === 4) {
-				if (xhr.status === 0) {
-					// уведомление о работе сети
-					chrome.extension.sendRequest({'action' : 'networkDown'});
-					xhr = null;
-					
-					reqFailFn('Can\'t connect to VK API. Maybe internet connection problems?');
-					return;
-				}
-				
-				// уведомление о работе сети
-				chrome.extension.sendRequest({'action' : 'networkUp'});
-				
-				try {
-					var result = JSON.parse(xhr.responseText);
-					if (typeof result.failed !== 'undefined') {
-						if (result.failed === 2) { // ключ устарел
-							Console.warn('LongPoll server key is invalid. Re-requesting a new key...');
-							
-							(function() {
-								var callee = arguments.callee;
-								
-								req.call(profile, 'messages.getLongPollServer', function(res) {
-									longPollData[profile[1]] = res;
-									window.setTimeout(reqLongPoll, 350);
-								}, function(err) {
-									Console.error(err);
-									window.setTimeout(callee, 1000);
-								});
-							})();
-						} else {
-							localStorage.setItem('lpts_' + profile[1], result.ts);
-							
-							localStorage.removeItem('perm_inbox_' + profile[1]);
-							localStorage.removeItem('perm_outbox_' + profile[1]);
-							
-							window.setTimeout(mailSyncProcess, 350);
-						}
-					} else {
-						result.updates.forEach(function(data) {
-							switch (data[0]) {
-								case 2 :
-									if (data[2] & 1) { // отметили как новое
-										Dbs[profile[1]].markMessageUnread(data[1], function() {
-											cache[profile[1]].inbox[data[1]].read_state = 0;
-											
-											// обновляем кэш на фронте
-											var cacheData = {};
-											cacheData[data[1]] = cache[profile[1]].inbox[data[1]];
-											chrome.extension.sendRequest({'action' : 'updateCache', 'data' : cacheData, 'type' : 'inbox', 'ap' : profile[1]});
-										}, dbFailFn);
-									} else if (data[2] & 256) { // прочитано
-										Dbs[profile[1]].markMessageRead(data[1], function() {
-											cache[profile[1]].inbox[data[1]].read_state = 1;
-											
-											// обновляем кэш на фронте
-											var cacheData = {};
-											cacheData[data[1]] = cache[profile[1]].inbox[data[1]];
-											chrome.extension.sendRequest({'action' : 'updateCache', 'data' : cacheData, 'type' : 'inbox', 'ap' : profile[1]});
-										}, dbFailFn);
-									}
-									
-									break;
-								
-								case 4 :
-									var insertMsg = function() {
-										var method, type;
-										if (data[2] & 2) {
-											type = 'outbox';
-											method = 'insertOutboxMessage';
-										} else {
-											type = 'inbox';
-											method = 'insertInboxMessage';
-										}
-										
-										var readState = (data[2] & 1) ? 0 : 1;
-										
-										var attachmentsField = [],
-											attachmentsFieldKeys = Object.keys(data[7]),
-											i, len, tmp;
-										
-										if (attachmentsFieldKeys.length) {
-											for (i=1, len=Math.floor(attachmentsFieldKeys.length / 2); i<=len; i++) {
-												if (typeof data[7]['attach' + i] === 'undefined') {
-													break;
-												}
-												
-												tmp = data[7]['attach' + i].split('_');
-												attachmentsField.push([data[7]['attach' + i + '_type'], tmp[0], tmp[1]]);
-											}
-										}
-										
-										Dbs[profile[1]][method](data[1], data[3], data[4], data[5], data[6], '', readState, attachmentsField, function(localId) {
-											Console.log('Message #' + data[1] + ' inserted as ' + localId);
-											
-											var msg = {
-												'date' : data[4],
-												'uid' : data[3],
-												'mid' : data[1],
-												'title' : data[5],
-												'body' : data[6],
-												'read_state' : readState,
-												'attachments' : attachmentsField
-											};
-											
-											cache[profile[1]][type][data[1]] = msg;
-											
-											// уведомление
-											if (readState === 0 && type === 'inbox') {
-												showNotification.call(profile, data[1]);
-											}
-											
-											// обновляем кэш на фронте
-											var cacheData = {};
-											cacheData[data[1]] = msg;
-											chrome.extension.sendRequest({'action' : 'updateCache', 'data' : cacheData, 'type' : type, 'ap' : profile[1]});
-										}, dbFailFn);
-									};
-									
-									if (typeof cache[profile[1]].contacts[data[3]] === 'undefined') {
-										_getOnePerson.call(profile, data[3], insertMsg, insertMsg, function(err) { // ошибка при запросе к API
-											Console.warn(err);
-											
-											// TODO что делать с сообщением?
-										});
-									} else {
-										insertMsg();
-									}
-									
-									break;
-								
-								case 8 :
-									var contact = cache[profile[1]].contacts[-data[1]];
-									Console.log(contact.first_name + ' ' + contact.last_name + ' is online');
-									break;
-								
-								case 9 :
-									var contact = cache[profile[1]].contacts[-data[1]];
-									var reason = (data[2] === 0) ? 'pressed exit' : 'timeout'
-									Console.log(contact.first_name + ' ' + contact.last_name + ' is offline (' + reason + ')');
-									break;
-								
-								default :
-									Console.log([data[0], data]);
-							}
-						});
-						
-						localStorage.setItem('lpts_' + profile[1], result.ts);
-						window.setTimeout(reqLongPoll, 1000);
-					}
-					
-					xhr = null;
-				} catch (e) {
-					Console.warn(xhr.responseText);
-					xhr = null;
-					
-					reqFailFn(e);
-					return;
-				}
-			}
-		};
-		
-		if (localStorage.getItem('a') === 'a') { // простой способ прекратить LongPoll-запросы ;p
-			return;
-		}
-		
-		xhr.send();
-		Console.log(['req longpoll process', Date.now(), url]);
-	};
-});

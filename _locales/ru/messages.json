@@ -1,8 +1,26 @@
 {
-	"appName" : {
+	"extName" : {
 		"message" : "VKontakte Online"
 	},
-	"appDescription" : {
+	"extDescription" : {
 		"message" : "Мгновенные уведомления о новых сообщениях ВКонтакте даже при закрытом браузере"
+	},
+	"notGranted" : {
+		"message" : "Вы не предоставили расширению доступ к вашим данным ВКонтакте"
+	},
+	"notAuthorized" : {
+		"message" : "Вы не авторизованы ВКонтакте"
+	},
+	"isOnlineM" : {
+		"message" : "появился в сети"
+	},
+	"isOnlineF" : {
+		"message" : "появилась в сети"
+	},
+	"isOfflineM" : {
+		"message" : "вышел из сети"
+	},
+	"isOfflineF" : {
+		"message" : "вышла из сети"
 	}
 }

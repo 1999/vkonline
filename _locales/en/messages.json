@@ -1,8 +1,26 @@
 {
-	"appName" : {
+	"extName" : {
 		"message" : "VK Online"
 	},
-	"appDescription" : {
+	"extDescription" : {
 		"message" : "Momentary notifications about the new messages in VK social network"
+	},
+	"notGranted" : {
+		"message" : "You have not granted access to your data on VK.com yet"
+	},
+	"notAuthorized" : {
+		"message" : "You are not authorized"
+	},
+	"isOnlineM" : {
+		"message" : "is online"
+	},
+	"isOnlineF" : {
+		"message" : "is online"
+	},
+	"isOfflineM" : {
+		"message" : "went offline"
+	},
+	"isOfflineF" : {
+		"message" : "went offline"
 	}
 }
