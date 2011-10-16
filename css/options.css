@@ -1,0 +1,65 @@
+body {
+	margin: 10px;
+	font: 13px/19px Helvetica, Arial, sans-serif;
+}
+
+#header {
+	height: 64px;
+	background: url(../pic/icon48.png) 4px 8px no-repeat;
+	font-size: 22px;
+	line-height: 64px;
+	font-weight: bold;
+	text-indent: 64px;
+	padding-bottom: 10px;
+}
+
+#content div.head {
+	background: #ebeff9;
+	border-top: 1px solid #b5c7de;
+	font-weight: bold;
+	font-size: 13px;
+	line-height: 22px;
+	text-indent: 6px;
+}
+
+#data {
+	margin: 12px 6px;
+	display: table;
+}
+
+#data div.trow {
+	display: table-row;
+}
+
+#data div.label {
+	width: 210px;
+	display: table-cell;
+	padding-bottom: 10px;
+}
+
+#data div.field {
+	display: table-cell;
+	padding-bottom: 10px;
+}
+
+#data div.field label {
+	display: block;
+	margin-bottom: 6px;
+}
+
+#buttons {
+	margin-top: 18px;
+}
+
+#save {
+	font-size: 16px;
+	cursor: pointer;
+}
+
+#footer {
+	text-align: right;
+	border-top: 1px solid #cdcdcd;
+	margin-top: 6px;
+	padding-top: 6px;
+}
+
