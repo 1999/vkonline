@@ -296,141 +296,144 @@
 							} else {
 								try {
 									var result = JSON.parse(xhr.responseText);
-									if (typeof result.failed !== 'undefined') { // ключ устарел (code 2) или такие старые события LongPoll-сервер уже не отдает
-										w.setTimeout(startUserSession, 1000);
-									} else {
-										result.updates.forEach(function(data) {
-											switch (data[0]) {
-												case 2 :
-													if (data[2] & 1) { // отметили как новое
-														totalNew += 1;
-														chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
-														
-														sounds.message.play();
-													} else if (data[2] & 256) { // прочитано
-														totalNew -= 1;
-														
-														if (totalNew) {
-															chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
-														} else {
-															chrome.browserAction.setBadgeText({'text' : ''});
-														}
-													}
-													
-													break;
-												
-												case 4 :
-													if (data[2] & 2) { // исходящее сообщение
-														return;
-													}
-													
-													if (data[2] & 1) { // новое
-														totalNew += 1;
-														chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
-														
-														if (Settings.Messages === 'no') { // настройки
-															sounds.message.play();
-															return;
-														}
-														
-														var uid = data[3];
-														var fn = function() {
-															showNotification.call(cachedProfiles[uid], {
-																'message' : data[6],
-																'timeout' : 7,
-																'sound' : 'message',
-																'onclick' : function() {
-																	this.cancel();
-																	chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/mail?act=show&id=' + data[1]});
-																}
-															});
-														};
-														
-														if (typeof cachedProfiles[uid] === 'undefined') {
-															req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
-																cachedProfiles[uid] = res[0];
-																fn();
-															});
-														} else {
-															fn();
-														}
-													}
-													
-													break;
-												
-												case 8 :
-													var uid = -data[1];
-													var fn = function() {
-														var i18msg = (cachedProfiles[uid].sex === '1') ? 'isOnlineF' : 'isOnlineM';
-														showNotification.call(cachedProfiles[uid], {
-															'message' : chrome.i18n.getMessage(i18msg),
-															'timeout' : 3,
-															'sound' : 'status',
-															'onclick' : function() {
-																this.cancel();
-																chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/id' + uid});
-															}
-														});
-													};
-													
-													if (Settings.Status === 'no') { // настройки
-														return;
-													}
-													
-													if (typeof cachedProfiles[uid] === 'undefined') {
-														req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
-															cachedProfiles[uid] = res[0];
-															fn();
-														});
-													} else {
-														fn();
-													}
-													
-													break;
-												
-												case 9 :
-													var uid = -data[1];
-													var fn = function() {
-														var i18msg = (cachedProfiles[uid].sex === '1') ? 'isOfflineF' : 'isOfflineM';
-														showNotification.call(cachedProfiles[uid], {
-															'message' : chrome.i18n.getMessage(i18msg),
-															'timeout' : 3,
-															'onclick' : function() {
-																this.cancel();
-																chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/id' + uid});
-															}
-														});
-													};
-													
-													if (Settings.Status === 'no') { // настройки
-														return;
-													}
-													
-													if (typeof cachedProfiles[uid] === 'undefined') {
-														req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
-															cachedProfiles[uid] = res[0];
-															fn();
-														});
-													} else {
-														fn();
-													}
-													
-													break;
-											}
-										});
-										
-										if (tokens[activeAccount[1]] !== activeUid) { // проверка на смену пользователя
-											return;
-										}
-										
-										longPollRes.ts = result.ts;
-										callee();
-									}
 								} catch (e) {
 									w.setTimeout(callee, 1000);
+									chrome.browserAction.setIcon({'path' : chrome.extension.getURL('pic/icon19_offline.png')});
 									
 									xhr = null;
 									return;
+								}
+								
+								chrome.browserAction.setIcon({'path' : chrome.extension.getURL('pic/icon19.png')});
+								if (typeof result.failed !== 'undefined') { // ключ устарел (code 2) или такие старые события LongPoll-сервер уже не отдает
+									w.setTimeout(startUserSession, 1000);
+								} else {
+									result.updates.forEach(function(data) {
+										switch (data[0]) {
+											case 2 :
+												if (data[2] & 1) { // отметили как новое
+													totalNew += 1;
+													chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
+													
+													sounds.message.play();
+												} else if (data[2] & 256) { // прочитано
+													totalNew -= 1;
+													
+													if (totalNew) {
+														chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
+													} else {
+														chrome.browserAction.setBadgeText({'text' : ''});
+													}
+												}
+												
+												break;
+											
+											case 4 :
+												if (data[2] & 2) { // исходящее сообщение
+													return;
+												}
+												
+												if (data[2] & 1) { // новое
+													totalNew += 1;
+													chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
+													
+													if (Settings.Messages === 'no') { // настройки
+														sounds.message.play();
+														return;
+													}
+													
+													var uid = data[3];
+													var fn = function() {
+														showNotification.call(cachedProfiles[uid], {
+															'message' : data[6],
+															'timeout' : 7,
+															'sound' : 'message',
+															'onclick' : function() {
+																this.cancel();
+																chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/mail?act=show&id=' + data[1]});
+															}
+														});
+													};
+													
+													if (typeof cachedProfiles[uid] === 'undefined') {
+														req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
+															cachedProfiles[uid] = res[0];
+															fn();
+														});
+													} else {
+														fn();
+													}
+												}
+												
+												break;
+											
+											case 8 :
+												var uid = -data[1];
+												var fn = function() {
+													var i18msg = (cachedProfiles[uid].sex === '1') ? 'isOnlineF' : 'isOnlineM';
+													showNotification.call(cachedProfiles[uid], {
+														'message' : chrome.i18n.getMessage(i18msg),
+														'timeout' : 3,
+														'sound' : 'status',
+														'onclick' : function() {
+															this.cancel();
+															chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/id' + uid});
+														}
+													});
+												};
+												
+												if (Settings.Status === 'no') { // настройки
+													return;
+												}
+												
+												if (typeof cachedProfiles[uid] === 'undefined') {
+													req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
+														cachedProfiles[uid] = res[0];
+														fn();
+													});
+												} else {
+													fn();
+												}
+												
+												break;
+											
+											case 9 :
+												var uid = -data[1];
+												var fn = function() {
+													var i18msg = (cachedProfiles[uid].sex === '1') ? 'isOfflineF' : 'isOfflineM';
+													showNotification.call(cachedProfiles[uid], {
+														'message' : chrome.i18n.getMessage(i18msg),
+														'timeout' : 3,
+														'onclick' : function() {
+															this.cancel();
+															chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/id' + uid});
+														}
+													});
+												};
+												
+												if (Settings.Status === 'no') { // настройки
+													return;
+												}
+												
+												if (typeof cachedProfiles[uid] === 'undefined') {
+													req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
+														cachedProfiles[uid] = res[0];
+														fn();
+													});
+												} else {
+													fn();
+												}
+												
+												break;
+										}
+									});
+									
+									if (tokens[activeAccount[1]] !== activeUid) { // проверка на смену пользователя
+										return;
+									}
+									
+									longPollRes.ts = result.ts;
+									callee();
 								}
 							}
 							
