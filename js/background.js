@@ -3,23 +3,20 @@
 	 * [...] - запрос идет
 	 * [?] - нет token, надо разрешить доступ, по клику открывается окно OAuth
 	 * [X] - не авторизован ВКонтакте
-	 * 
-	 * 
-	 * var Settings = new AppSettings();
-	
-	var sounds = {
-		'message' : (new Audio).attr('src', chrome.extension.getURL('sound/message.mp3')),
-		'error' : (new Audio).attr('src', chrome.extension.getURL('sound/error.mp3')),
-		'clear' : (new Audio).attr('src', chrome.extension.getURL('sound/clear.mp3')),
-		'sent' : (new Audio).attr('src', chrome.extension.getURL('sound/sent.mp3'))
-	};
 	 */
+	
+	var Settings = new AppSettings();
 	
 	var VkAppId = 2642167,
 		VkAppScope = ['messages'];
 	
 	var activeAccount = [false, false];
 	var cachedProfiles = {};
+	
+	var sounds = {
+		'message' : (new Audio).attr('src', chrome.extension.getURL('sound/message.mp3')),
+		'status' : (new Audio).attr('src', chrome.extension.getURL('sound/status.mp3')),
+	};
 	
 	var tokens = localStorage.getItem('tokens');
 	if (tokens === null) {
@@ -50,7 +47,9 @@
 		notification.show();
 		
 		// play sound
-		//sounds.message.play();
+		if (typeof data.sound !== 'undefined') {
+			sounds[data.sound].play();
+		}
 		
 		if (typeof data.timeout !== 'undefined') {
 			w.setTimeout(function() {
@@ -59,16 +58,17 @@
 		}
 	};
 	
-	var req = function(method, params, fnOk, fnFail) {
-		var args = arguments,
+	var req = function(method, params, fnOk, retry) {
+		var args = Array.prototype.slice.call(arguments, 0),
 			self = this;
 		
 		if (typeof params === 'function') {
-			fnFail = fnOk;
+			retry = fnOk;
 			fnOk = params;
 			params = {};
 		}
 		
+		retry = retry || 1;
 		params = params || {};
 		if (this !== w) {
 			params.access_token = this;
@@ -80,7 +80,7 @@
 		});
 		
 		var xhr = new XMLHttpRequest();
-		xhr.open('POST', 'https://api.vkontakte.ru/method/' + method, true);
+		xhr.open('POST', 'https://api.' + Settings.Domain + '/method/' + method, true);
 		
 		xhr.onreadystatechange = function() {
 			if (xhr.readyState === 4) {
@@ -108,8 +108,34 @@
 					
 					chrome.browserAction.setIcon({'path' : chrome.extension.getURL('pic/icon19.png')});
 					if (typeof result.error !== 'undefined') {
-						if (typeof fnFail === 'function') {
-							fnFail(result.error);
+						if (result.error.error_code === 5 || result.error.error_code === 7) {
+							if (retry <= 5) {
+								w.setTimeout(function() {
+									if (typeof args[args.length-1] !== 'number') {
+										retry += 1;
+										args.push(retry);
+									} else {
+										args[args.length-1] += 1;
+									}
+									
+									req.apply(self, args);
+								}, 350);
+							} else {
+								if (self !== w) {
+									delete tokens[self];
+									localStorage.setItem('tokens', JSON.stringify(tokens));
+									
+									chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]})
+									chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('notGranted')});
+									chrome.browserAction.setBadgeText({'text' : '?'});
+									
+									browserActionClickedAttach('newbie');
+								} else {
+									alert('uncaught error: ' + result.error.error_code);
+								}
+							}
+						} else {
+							alert('uncaught error: ' + result.error.error_code);
 						}
 					} else {
 						if (typeof fnOk === 'function') {
@@ -126,28 +152,34 @@
 	};
 	
 	var whoami = function(fnUser, fnGuest) {
+		var args = arguments;
+		
 		var xhr = new XMLHttpRequest();
-		xhr.open('GET', 'http://vkontakte.ru/', true);
+		xhr.open('GET', 'http://' + Settings.Domain + '/', true);
 		
 		xhr.onreadystatechange = function() {
 			if (xhr.readyState === 4) {
-				var matches = xhr.responseText.match(/<title>(.*)<\/title>/);
-				if (matches[1].length <= 7) { // беда с кодировкой ВКонтакте, поэтому легче проверить на длину строки
-					var liMatch = xhr.responseText.match(/<li id="myprofile" class="clear_fix">(.*?)<\/li>/);
-					var hrefMatch = liMatch[1].match(/href=".*?"/gm);
-					var nickname = hrefMatch[1].substring(7, hrefMatch[1].length-1);
+				if (xhr.status === 0) { // нет соединения с интернетом
+					chrome.browserAction.setIcon({'path' : chrome.extension.getURL('pic/icon19_offline.png')});
+					chrome.browserAction.setBadgeText({'text' : ''});
 					
-					if (nickname.substr(0, 2) === 'id') {
-						fnUser(nickname.substr(2));
-					} else {
-						req.call(w, 'resolveScreenName', {'screen_name' : nickname}, function(res) {
-							fnUser(res.object_id);
-						}, function() {
-							
-						});
-					}
+					w.setTimeout(function() {
+						whoami.apply(w, args);
+					}, 1000);
 				} else {
-					fnGuest();
+					chrome.browserAction.setIcon({'path' : chrome.extension.getURL('pic/icon19.png')});
+					chrome.browserAction.setBadgeText({'text' : ''});
+					
+					var matches = xhr.responseText.match(/<title>(.*)<\/title>/);
+					if (matches[1].length <= 7) { // беда с кодировкой ВКонтакте, поэтому легче проверить на длину строки
+						var liMatch = xhr.responseText.match(/<li id="myprofile" class="clear_fix">(.*?)<\/li>/);
+						var hrefMatch = liMatch[1].match(/href=".*?"/gm);
+						var nickname = hrefMatch[1].substring(7, hrefMatch[1].length-1);
+						
+						fnUser(nickname);
+					} else {
+						fnGuest();
+					}
 				}
 			}
 		};
@@ -155,15 +187,40 @@
 		xhr.send();
 	};
 	
-	var checkUserOnload = function() {
-		chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]});
-		chrome.browserAction.setBadgeText({'text' : '...'});
+	var gotUser = function(nickname) {
+		var fn = function(userId) {
+			if (typeof tokens[userId] === 'undefined') { // еще нет доступа
+				chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]})
+				chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('notGranted')});
+				chrome.browserAction.setBadgeText({'text' : '?'});
+				
+				browserActionClickedAttach('newbie');
+			} else {
+				chrome.browserAction.setBadgeText({'text' : '...'});
+				chrome.browserAction.setBadgeBackgroundColor({'color' : [255, 0, 0, 128]})
+				chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('extName')});
+				
+				startUserSession();
+				browserActionClickedAttach('granted');
+			}
+		};
 		
-		whoami(function(userId) {
-			chrome.browserAction.setBadgeText({'text' : userId});
-		}, function() {
-			chrome.browserAction.setBadgeText({'text' : 'X'});
-		});
+		if (/^id[0-9]+$/.test(nickname)) {
+			if (activeAccount[0] !== nickname) {
+				activeAccount = [nickname, nickname.substr(2)];
+				fn(nickname.substr(2));
+			}
+		} else {
+			if (activeAccount[0] !== nickname) {
+				activeAccount = [nickname, false];
+				
+				// получаем UID
+				req.call(w, 'resolveScreenName', {'screen_name' : nickname}, function(res) {
+					activeAccount[1] = res.object_id.toString();
+					fn(res.object_id.toString());
+				});
+			}
+		}
 	};
 	
 	/**
@@ -171,13 +228,13 @@
 	 */
 	var browserActionClickedFn = {
 		'guest' : function() {
-			chrome.tabs.create({'url' : 'http://vkontakte.ru'});
+			chrome.tabs.create({'url' : 'http://' + Settings.Domain});
 		},
 		'granted' : function() {
-			chrome.tabs.create({'url' : 'http://vkontakte.ru/mail'});
+			chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/mail'});
 		},
 		'newbie' : function() {
-			chrome.tabs.create({'url' : 'http://api.vkontakte.ru/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.vkontakte.ru/blank.html&display=page&response_type=token'});
+			chrome.tabs.create({'url' : 'http://api.' + Settings.Domain + '/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.' + Settings.Domain + '/blank.html&display=page&response_type=token'});
 		}
 	};
 	
@@ -210,6 +267,7 @@
 				
 				if (totalNew) {
 					chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
+					sounds.message.play();
 				} else {
 					chrome.browserAction.setBadgeText({'text' : ''});
 				}
@@ -245,6 +303,8 @@
 													if (data[2] & 1) { // отметили как новое
 														totalNew += 1;
 														chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
+														
+														sounds.message.play();
 													} else if (data[2] & 256) { // прочитано
 														totalNew -= 1;
 														
@@ -266,14 +326,20 @@
 														totalNew += 1;
 														chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
 														
+														if (Settings.Messages === 'no') { // настройки
+															sounds.message.play();
+															return;
+														}
+														
 														var uid = data[3];
 														var fn = function() {
 															showNotification.call(cachedProfiles[uid], {
 																'message' : data[6],
 																'timeout' : 3,
+																'sound' : 'message',
 																'onclick' : function() {
 																	this.cancel();
-																	chrome.tabs.create({'url' : 'http://vkontakte.ru/mail?act=show&id=' + data[1]});
+																	chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/mail?act=show&id=' + data[1]});
 																}
 															});
 														};
@@ -282,8 +348,6 @@
 															req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
 																cachedProfiles[uid] = res[0];
 																fn();
-															}, function(err) {
-																
 															});
 														} else {
 															fn();
@@ -298,16 +362,23 @@
 														var i18msg = (cachedProfiles[uid].sex === '1') ? 'isOnlineF' : 'isOnlineM';
 														showNotification.call(cachedProfiles[uid], {
 															'message' : chrome.i18n.getMessage(i18msg),
-															'timeout' : 3
+															'timeout' : 3,
+															'sound' : 'status',
+															'onclick' : function() {
+																this.cancel();
+																chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/id' + uid});
+															}
 														});
 													};
+													
+													if (Settings.Status === 'no') { // настройки
+														return;
+													}
 													
 													if (typeof cachedProfiles[uid] === 'undefined') {
 														req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
 															cachedProfiles[uid] = res[0];
 															fn();
-														}, function(err) {
-															
 														});
 													} else {
 														fn();
@@ -321,16 +392,22 @@
 														var i18msg = (cachedProfiles[uid].sex === '1') ? 'isOfflineF' : 'isOfflineM';
 														showNotification.call(cachedProfiles[uid], {
 															'message' : chrome.i18n.getMessage(i18msg),
-															'timeout' : 3
+															'timeout' : 3,
+															'onclick' : function() {
+																this.cancel();
+																chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/id' + uid});
+															}
 														});
 													};
+													
+													if (Settings.Status === 'no') { // настройки
+														return;
+													}
 													
 													if (typeof cachedProfiles[uid] === 'undefined') {
 														req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
 															cachedProfiles[uid] = res[0];
 															fn();
-														}, function(err) {
-															
 														});
 													} else {
 														fn();
@@ -361,20 +438,35 @@
 					
 					xhr.send();
 				})();
-			}, function(err) {
-				
 			})
-		}, function(err) {
-			
 		});
 	};
 	
 	// запускаем при загрузке
-	//checkUserOnload();
+	chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]});
+	chrome.browserAction.setBadgeText({'text' : '...'});
+	whoami(function(nickname) {
+		gotUser(nickname);
+	}, function() {
+		chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]})
+		chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('notAuthorized')});
+		chrome.browserAction.setBadgeText({'text' : 'X'});
+		
+		browserActionClickedAttach('guest');
+	});
 	
 	
 	chrome.extension.onRequest.addListener(function(request, sender, sendResponse) {
 		switch (request.action) {
+			case 'settingsChanged' :
+				// обновляем настройки громкости оповещений
+				var newVolume = Settings.SoundLevel;
+				Object.keys(sounds).forEach(function(key) {
+					sounds[key].volume = newVolume;
+				});
+				
+				break;
+			
 			case 'state' :
 				if (request.data === false) {
 					activeAccount = [false, false];
@@ -385,39 +477,7 @@
 					
 					browserActionClickedAttach('guest');
 				} else {
-					var fn = function(userId) {
-						if (typeof tokens[userId] === 'undefined') { // еще нет доступа
-							chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]})
-							chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('notGranted')});
-							chrome.browserAction.setBadgeText({'text' : '?'});
-							
-							browserActionClickedAttach('newbie');
-						} else {
-							chrome.browserAction.setBadgeText({'text' : '...'});
-							chrome.browserAction.setBadgeBackgroundColor({'color' : [255, 0, 0, 128]})
-							chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('extName')});
-							
-							startUserSession();
-							browserActionClickedAttach('granted');
-						}
-					};
-					
-					if (/^id[0-9]+$/.test(request.data)) {
-						if (activeAccount[0] !== request.data) {
-							activeAccount = [request.data, request.data.substr(2)];
-							fn(request.data.substr(2));
-						}
-					} else {
-						if (activeAccount[0] !== request.data) {
-							activeAccount = [request.data, false];
-							
-							// получаем UID
-							req.call(w, 'resolveScreenName', {'screen_name' : request.data}, function(res) {
-								activeAccount[1] = res.object_id.toString();
-								fn(res.object_id.toString());
-							});
-						}
-					}
+					gotUser(request.data);
 				}
 				
 				break;
@@ -430,14 +490,14 @@
 				chrome.windows.getAll({'populate' : true}, function(windows) {
 					windows.forEach(function(windowElem) {
 						windowElem.tabs.forEach(function(tab) {
-							if (tab.url.indexOf('api.vkontakte.ru/blank.html') !== -1) {
+							if (tab.url.indexOf('api.' + Settings.Domain + '/blank.html') !== -1) {
 								chrome.tabs.remove(tab.id);
 							}
 						});
 					});
 				});
 				
-				chrome.browserAction.setBadgeText({'text' : '...'});
+				chrome.browserAction.setBadgeText({'text' : ''});
 				chrome.browserAction.setBadgeBackgroundColor({'color' : [255, 0, 0, 128]})
 				chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('extName')});
 				
@@ -451,7 +511,7 @@
 				chrome.windows.getAll({'populate' : true}, function(windows) {
 					windows.forEach(function(windowElem) {
 						windowElem.tabs.forEach(function(tab) {
-							if (tab.url.indexOf('api.vkontakte.ru/blank.html') !== -1) {
+							if (tab.url.indexOf('api.' + Settings.Domain + '/blank.html') !== -1) {
 								chrome.tabs.remove(tab.id);
 							}
 						});

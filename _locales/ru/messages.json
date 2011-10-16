@@ -22,5 +22,32 @@
 	},
 	"isOfflineF" : {
 		"message" : "вышла из сети"
+	},
+	"options" : {
+		"message" : "Настройки"
+	},
+	"settingsStatus" : {
+		"message" : "Показывать уведомления о входе и выходе друзей из сети"
+	},
+	"settingsYes" : {
+		"message" : "Да, пожалуйста"
+	},
+	"settingsNo" : {
+		"message" : "Нет, спасибо"
+	},
+	"settingsMessages" : {
+		"message" : "Показывать уведомления с текстом личных сообщений"
+	},
+	"saveBtn" : {
+		"message" : "Сохранить"
+	},
+	"saveBtnClicked" : {
+		"message" : "ОК!"
+	},
+	"settingsSoundLevel" : {
+		"message" : "Громкость оповещений"
+	},
+	"settingsDomain" : {
+		"message" : "Домен для работы расширения"
 	}
 }

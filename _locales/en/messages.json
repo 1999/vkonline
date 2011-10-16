@@ -22,5 +22,32 @@
 	},
 	"isOfflineF" : {
 		"message" : "went offline"
+	},
+	"options" : {
+		"message" : "Settings"
+	},
+	"settingsStatus" : {
+		"message" : "Show notifications regarding contacts' online status changes"
+	},
+	"settingsYes" : {
+		"message" : "Oh, yes!"
+	},
+	"settingsNo" : {
+		"message" : "Hell no!"
+	},
+	"settingsMessages" : {
+		"message" : "Show notifications with the text of private messages"
+	},
+	"saveBtn" : {
+		"message" : "Save"
+	},
+	"saveBtnClicked" : {
+		"message" : "ОК!"
+	},
+	"settingsSoundLevel" : {
+		"message" : "Notifications' sound level"
+	},
+	"settingsDomain" : {
+		"message" : "Domain extension works with"
 	}
 }

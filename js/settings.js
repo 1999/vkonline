@@ -1,21 +1,13 @@
 var AppSettings = function() {
-	var settingsAvailable = ['Debug', 'SortContacts', 'DeleteUser', 'SoundLevel'],
-		settings, self = this;
+	var self = this,
+		settings,
+		settingsAvailable = {'Status' : 'no', 'Messages' : 'yes', 'SoundLevel' : 0.8, 'Domain' : 'vkontakte.ru'};
 	
 	var recalcSettings = function() {
-		settings = {};
-		settingsAvailable.forEach(function(elem) {
-			if (elem !== 'SoundLevel') {
-				settings[elem] = 0;
-			} else {
-				settings[elem] = 0.8;
-			}
-		});
-		
 		try {
 			settings = JSON.parse(localStorage.getItem('settings') || '');
 		} catch (e) {
-			// nothing
+			settings = settingsAvailable;
 		}
 	};
 	
@@ -23,18 +15,18 @@ var AppSettings = function() {
 	recalcSettings();
 	
 	// устанавливаем геттеры и сеттеры
-	settingsAvailable.forEach(function(elem) {
-		self.__defineGetter__(elem, function() {
+	Object.keys(settingsAvailable).forEach(function(key) {
+		self.__defineGetter__(key, function() {
 			// заново получаем на случай, если они изменились за это время
 			recalcSettings();
 			
-			return (typeof settings[elem] !== 'undefined')
-				? settings[elem]
+			return (typeof settings[key] !== 'undefined')
+				? settings[key]
 				: null;
 		});
 		
-		self.__defineSetter__(elem, function(value) {
-			settings[elem] = value;
+		self.__defineSetter__(key, function(value) {
+			settings[key] = value;
 			localStorage.setItem('settings', JSON.stringify(settings));
 		});
 	});

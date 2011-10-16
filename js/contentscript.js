@@ -1,7 +1,6 @@
 (function(w) {
 	var account = false;
-	
-	w.setInterval(function() {
+	var intervalFn = function() {
 		if (['vkontakte.ru', 'api.vkontakte.ru', 'vk.com', 'api.vk.com'].indexOf(w.location.host) === -1) {
 			return;
 		}
@@ -44,5 +43,11 @@
 				}
 			}
 		}
-	}, 1000);
+	};
+	
+	// запускаем при загрузке страницы
+	intervalFn();
+	
+	// ...и по интервалу раз в секунду
+	w.setInterval(intervalFn, 1000);
 })(window);

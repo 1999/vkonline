@@ -4,26 +4,25 @@ window.onload = function() {
 	var sound = new Audio();
 	sound.src = chrome.extension.getURL('sound/message.mp3');
 	
-	document.title = chrome.i18n.getMessage('appName');
+	document.title = chrome.i18n.getMessage('extName');
 	var i, select, options, optionsData;
 	
 	$('#header').html(chrome.i18n.getMessage('extName'));
 	$('#content > div.head').html(chrome.i18n.getMessage('options'));
 
 	var author = $('<a>').attr('href', 'http://www.staypositive.ru').html(chrome.i18n.getMessage('author'));
-	var icons = document.createTextNode(', icons by ');
-	var iconsLink = $('<a>').attr('href', 'http://iconza.ru/').html('Iconza');
-	$('#footer').append([author, icons, iconsLink])
+	$('#footer').append([author])
 	
-	// сортировка контактов
-	var sort = $('#data').querySelector('div[data-variable="settingsSortContacts"]');
-	sort.firstChild.html(chrome.i18n.getMessage('settingsSortContacts'));
+	
+	// уведомления о статусе
+	var status = $('#data').querySelector('div[data-variable="settingsStatus"]');
+	status.firstChild.html(chrome.i18n.getMessage('settingsStatus'));
 	
 	select = $('<select>');
-	options = [], optionsData = [[0, 'settingsSortContactsLast'], [1, 'settingsSortContactsPopular'], [2, 'settingsSortContactsAlpha']];
+	options = [], optionsData = [['no', 'settingsNo'], ['yes', 'settingsYes']];
 	optionsData.forEach(function(data) {
 		var option = $('<option>').val(data[0]).html(chrome.i18n.getMessage(data[1]));
-		if (parseInt(Settings.SortContacts, 10) === data[0]) {
+		if (Settings.Status === data[0]) {
 			option.attr('selected', 'selected');
 		}
 		
@@ -31,11 +30,31 @@ window.onload = function() {
 	});
 	
 	select.append(options);
-	sort.lastChild.append(select);
+	status.lastChild.append(select);
+	
+	
+	// уведомления о сообщениях
+	var mes = $('#data').querySelector('div[data-variable="settingsMessages"]');
+	mes.firstChild.html(chrome.i18n.getMessage('settingsMessages'));
+	
+	select = $('<select>');
+	options = [], optionsData = [['no', 'settingsNo'], ['yes', 'settingsYes']];
+	optionsData.forEach(function(data) {
+		var option = $('<option>').val(data[0]).html(chrome.i18n.getMessage(data[1]));
+		if (Settings.Messages === data[0]) {
+			option.attr('selected', 'selected');
+		}
+		
+		options.push(option);
+	});
+	
+	select.append(options);
+	mes.lastChild.append(select);
+	
 	
 	// уровень звука
-	var sort = $('#data').querySelector('div[data-variable="settingsSoundLevel"]');
-	sort.firstChild.html(chrome.i18n.getMessage('settingsSoundLevel'));
+	var slevel = $('#data').querySelector('div[data-variable="settingsSoundLevel"]');
+	slevel.firstChild.html(chrome.i18n.getMessage('settingsSoundLevel'));
 	
 	rangeInput = $('<input>').attr({'type' : 'range', 'min' : 0, 'max' : 10, 'step' : 1}).val(parseFloat(Settings.SoundLevel)*10);
 	rangeInput.onchange = function() {
@@ -43,17 +62,18 @@ window.onload = function() {
 		sound.play();
 	};
 	
-	sort.lastChild.append(rangeInput);
+	slevel.lastChild.append(rangeInput);
 	
-	// удаление контактов
-	var deleteUser = $('#data').querySelector('div[data-variable="settingsDeleteUser"]');
-	deleteUser.firstChild.html(chrome.i18n.getMessage('settingsDeleteUser'));
 	
-	select = $('<select>').attr('disabled', true);
-	options = [], optionsData = [[0, 'settingsDeleteUserLocal'], [1, 'settingsDeleteUserFoe'], [2, 'settingsDeleteUserMsgs'], [3, 'settingsDeleteUserEverything']];
+	// домен
+	var domain = $('#data').querySelector('div[data-variable="settingsDomain"]');
+	domain.firstChild.html(chrome.i18n.getMessage('settingsDomain'));
+	
+	select = $('<select>');
+	options = [], optionsData = [['vkontakte.ru', 'vkontakte.ru'], ['vk.com', 'vk.com']];
 	optionsData.forEach(function(data) {
-		var option = $('<option>').val(data[0]).html(chrome.i18n.getMessage(data[1]));
-		if (parseInt(Settings.DeleteUser, 10) === data[0]) {
+		var option = $('<option>').val(data[0]).html(data[1]);
+		if (Settings.Domain === data[0]) {
 			option.attr('selected', 'selected');
 		}
 		
@@ -61,7 +81,7 @@ window.onload = function() {
 	});
 	
 	select.append(options);
-	deleteUser.lastChild.append(select);
+	domain.lastChild.append(select);
 	
 	
 	$('#save').html(chrome.i18n.getMessage('saveBtn')).click(function(e) {
@@ -73,7 +93,7 @@ window.onload = function() {
 			if (key !== 'SoundLevel') {
 				Settings[key] = formElem.options[formElem.options.selectedIndex].value;
 			} else {
-				Settings[key] = parseInt(formElem.val(), 10)/10;
+				Settings[key] = formElem.val();
 			}
 		}
 		
@@ -86,4 +106,3 @@ window.onload = function() {
 		}, 1000);
 	});
 };
-
