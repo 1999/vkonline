@@ -337,7 +337,7 @@
 														var fn = function() {
 															showNotification.call(cachedProfiles[uid], {
 																'message' : data[6],
-																'timeout' : 3,
+																'timeout' : 7,
 																'sound' : 'message',
 																'onclick' : function() {
 																	this.cancel();
