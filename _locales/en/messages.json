@@ -3,7 +3,7 @@
 		"message" : "VK Online"
 	},
 	"extDescription" : {
-		"message" : "Momentary notifications about the new messages in VK social network"
+		"message" : "Momentary notifications about the new PM and online status changes of your friends in VK social network"
 	},
 	"notGranted" : {
 		"message" : "You have not granted access to your data on VK.com yet"

@@ -108,7 +108,8 @@
 					
 					chrome.browserAction.setIcon({'path' : chrome.extension.getURL('pic/icon19.png')});
 					if (typeof result.error !== 'undefined') {
-						if (result.error.error_code === 5 || result.error.error_code === 7) {
+						var errorCode = parseInt(result.error.error_code, 10);
+						if (errorCode === 5 || errorCode === 7) {
 							if (retry <= 5) {
 								w.setTimeout(function() {
 									if (typeof args[args.length-1] !== 'number') {
@@ -277,7 +278,8 @@
 					var callee = arguments.callee;
 					
 					var xhr = new XMLHttpRequest(),
-						url = 'http://' + longPollRes.server + '?act=a_check&key=' + longPollRes.key + '&ts=' + longPollRes.ts + '&wait=25&mode=0';
+						server = (Settings.Domain === 'vk.com') ? longPollRes.server.replace('vkontakte.ru', 'vk.com') : longPollRes.server,
+						url = 'http://' + server + '?act=a_check&key=' + longPollRes.key + '&ts=' + longPollRes.ts + '&wait=25&mode=0';
 					
 					xhr.open('GET', url, true);
 					xhr.onreadystatechange = function() {
