@@ -35,6 +35,8 @@
 	var showNotification = function(data) {
 		var person = this;
 		
+		data.message = data.message.replace(/<br\s*\/?>/mg, ' ');
+		
 		var notification = window.webkitNotifications.createNotification(person.photo, person.first_name + ' ' + person.last_name, data.message);
 		notification.onclick = function() {
 			if (typeof data.onclick === 'function') {
@@ -337,32 +339,57 @@
 													totalNew += 1;
 													chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
 													
-													if (Settings.Messages === 'no') { // настройки
-														sounds.message.play();
-														return;
-													}
-													
-													var uid = data[3];
-													var fn = function() {
-														showNotification.call(cachedProfiles[uid], {
-															'message' : data[6],
-															'timeout' : 7,
-															'sound' : 'message',
-															'onclick' : function() {
-																this.cancel();
-																chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/mail?act=show&id=' + data[1]});
+													// если хотя бы 1 вкладка открыта, не проигрываем звук
+													chrome.windows.getAll({'populate' : true}, function(windows) {
+														var playSound = true;
+														
+														if (windows.length) {
+															windows.forEach(function(windowElem) {
+																windowElem.tabs.forEach(function(tab) {
+																	if (tab.url.indexOf('vkontakte.ru') !== -1 || tab.url.indexOf('vk.com') !== -1) {
+																		if (tab.url.indexOf('developers.php') === -1) {
+																			playSound = false;
+																		}
+																	}
+																});
+															});
+														}
+														
+														if (Settings.Messages === 'no') { // настройки
+															if (playSound) {
+																sounds.message.play();
 															}
-														});
-													};
-													
-													if (typeof cachedProfiles[uid] === 'undefined') {
-														req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
-															cachedProfiles[uid] = res[0];
+															
+															return;
+														}
+														
+														var uid = data[3];
+														var fn = function() {
+															var notificationData = {
+																'message' : data[6],
+																'timeout' : 7,
+																'onclick' : function() {
+																	this.cancel();
+																	chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/mail?act=show&id=' + data[1]});
+																}
+															};
+															
+															if (playSound) {
+																notificationData.sound = 'message';
+															}
+															
+															showNotification.call(cachedProfiles[uid], notificationData);
+														};
+														
+														if (typeof cachedProfiles[uid] === 'undefined') {
+															req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
+																cachedProfiles[uid] = res[0];
+																fn();
+															});
+														} else {
 															fn();
-														});
-													} else {
-														fn();
-													}
+														}
+													});
 												}
 												
 												break;
