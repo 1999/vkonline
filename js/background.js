@@ -341,7 +341,8 @@
 													
 													// если хотя бы 1 вкладка открыта, не проигрываем звук
 													chrome.windows.getAll({'populate' : true}, function(windows) {
-														var playSound = true;
+														var playSound = true,
+															needsNotify = true;
 														
 														if (windows.length) {
 															windows.forEach(function(windowElem) {
@@ -349,6 +350,14 @@
 																	if (tab.url.indexOf('vkontakte.ru') !== -1 || tab.url.indexOf('vk.com') !== -1) {
 																		if (tab.url.indexOf('developers.php') === -1) {
 																			playSound = false;
+																			
+																			if (windowElem.focused === false) {
+																				chrome.tabs.update(tab.id, {'selected' : true});
+																			} else {
+																				if (tab.selected) {
+																					needsNotify = false;
+																				}
+																			}
 																		}
 																	}
 																});
@@ -365,6 +374,10 @@
 														
 														var uid = data[3];
 														var fn = function() {
+															if (needsNotify === false) {
+																return;
+															}
+															
 															var notificationData = {
 																'message' : data[6],
 																'timeout' : 7,
