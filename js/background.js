@@ -125,6 +125,9 @@
 								}, 350);
 							} else {
 								if (self !== w) {
+									// debug purposes only
+									localStorage.setItem('__badtoken__' + Date.now() + '__' + self, tokens[self]);
+									
 									delete tokens[self];
 									localStorage.setItem('tokens', JSON.stringify(tokens));
 									
