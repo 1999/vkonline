@@ -112,11 +112,15 @@
 					if (typeof result.error !== 'undefined') {
 						var errorCode = parseInt(result.error.error_code, 10);
 						if (errorCode === 5 || errorCode === 7) {
+							if (result.error.error_msg.indexOf('expired') !== -1) {
+								chrome.tabs.create({'url' : 'http://api.' + Settings.Domain + '/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.' + Settings.Domain + '/blank.html&display=page&response_type=token'});
+								return;
+							}
+							
 							if (retry <= 5) {
 								w.setTimeout(function() {
-									if (typeof args[args.length-1] !== 'number') {
-										retry += 1;
-										args.push(retry);
+									if (typeof args.last() !== 'number') {
+										args.push(1);
 									} else {
 										args[args.length-1] += 1;
 									}
@@ -126,9 +130,9 @@
 							} else {
 								if (self !== w) {
 									// debug purposes only
-									localStorage.setItem('__badtoken__' + Date.now() + '__' + self, tokens[self]);
+									localStorage.setItem('__badtoken__' + Date.now() + '__' + activeAccount[1], self);
 									
-									delete tokens[self];
+									delete tokens[activeAccount[1]];
 									localStorage.setItem('tokens', JSON.stringify(tokens));
 									
 									chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]})
