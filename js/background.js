@@ -33,11 +33,12 @@
 	 * Открытие notification
 	 */
 	var showNotification = function(data) {
-		var person = this;
+		var person = this,
+			photo = (person === w) ? chrome.extension.getURL('pic/icon50_offline.png') : person.photo,
+			author = (person === w) ? 'Внимание' : person.first_name + ' ' + person.last_name,
+			message = data.message.replace(/<br\s*\/?>/mg, ' ');
 		
-		data.message = data.message.replace(/<br\s*\/?>/mg, ' ');
-		
-		var notification = window.webkitNotifications.createNotification(person.photo, person.first_name + ' ' + person.last_name, data.message);
+		var notification = window.webkitNotifications.createNotification(photo, author, message);
 		notification.onclick = function() {
 			if (typeof data.onclick === 'function') {
 				data.onclick.call(notification);
@@ -113,7 +114,38 @@
 						var errorCode = parseInt(result.error.error_code, 10);
 						if (errorCode === 5 || errorCode === 7) {
 							if (result.error.error_msg.indexOf('expired') !== -1) {
-								chrome.tabs.create({'url' : 'http://api.' + Settings.Domain + '/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.' + Settings.Domain + '/blank.html&display=page&response_type=token'});
+								// открыты ли окна браузера
+								var notificationNeeded = true;
+								chrome.windows.getAll(null, function(windows) {
+									if (windows.length) {
+										notificationNeeded = false;
+									}
+								});
+								
+								if (notificationNeeded) {
+									showNotification.call(w, {
+										'message' : chrome.i18n.getMessage('tokenExpired'),
+										'onclick' : function() {
+											this.cancel();
+											
+											var windowsOpened;
+											chrome.windows.getAll(null, function(windows) {
+												windowsOpened = (windows.length)
+													? true
+													: false;
+											});
+											
+											if (windowsOpened) {
+												chrome.tabs.create({'url' : 'http://api.' + Settings.Domain + '/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.' + Settings.Domain + '/blank.html&display=page&response_type=token'});
+											} else {
+												chrome.windows.create({'url' : 'http://api.' + Settings.Domain + '/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.' + Settings.Domain + '/blank.html&display=page&response_type=token'});
+											}
+										}
+									});
+								} else {
+									chrome.tabs.create({'url' : 'http://api.' + Settings.Domain + '/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.' + Settings.Domain + '/blank.html&display=page&response_type=token'});
+								}
+								
 								return;
 							}
 							
