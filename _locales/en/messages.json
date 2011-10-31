@@ -52,5 +52,14 @@
 	},
 	"tokenExpired" : {
 		"message" : "VK Online extension needs to update VK API access key. Click onto this notification window to update the key right now."
+	},
+	"settingsOpenNotification" : {
+		"message" : "When notification with a new message is clicked"
+	},
+	"settingsOpenNotificationOld" : {
+		"message" : "Show old-style page (not dialog with user)"
+	},
+	"settingsOpenNotificationNew" : {
+		"message" : "Show new-style page with dialog"
 	}
 }

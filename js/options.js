@@ -84,6 +84,25 @@ window.onload = function() {
 	domain.lastChild.append(select);
 	
 	
+	// открытие окон уведомлений
+	var notif = $('#data').querySelector('div[data-variable="settingsOpenNotification"]');
+	notif.firstChild.html(chrome.i18n.getMessage('settingsOpenNotification'));
+	
+	select = $('<select>');
+	options = [], optionsData = [['old', 'settingsOpenNotificationOld'], ['new', 'settingsOpenNotificationNew']];
+	optionsData.forEach(function(data) {
+		var option = $('<option>').val(data[0]).html(chrome.i18n.getMessage(data[1]));
+		if (Settings.OpenNotification === data[0]) {
+			option.attr('selected', 'selected');
+		}
+		
+		options.push(option);
+	});
+	
+	select.append(options);
+	notif.lastChild.append(select);
+	
+	
 	$('#save').html(chrome.i18n.getMessage('saveBtn')).click(function(e) {
 		var i, key, rows = $('#data').querySelectorAll('div.trow'), options = {}, formElem;
 		for (i=0; i<rows.length; i++) {

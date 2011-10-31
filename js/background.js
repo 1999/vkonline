@@ -422,7 +422,12 @@
 																'timeout' : 7,
 																'onclick' : function() {
 																	this.cancel();
-																	chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/mail?act=show&id=' + data[1]});
+																	
+																	if (Settings.OpenNotification === 'new') {
+																		chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/im?sel=' + uid});
+																	} else {
+																		chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/mail?act=show&id=' + data[1]});
+																	}
 																}
 															};
 															

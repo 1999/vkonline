@@ -52,5 +52,14 @@
 	},
 	"tokenExpired" : {
 		"message" : "Расширению VKontakte Online требуется обновить ключ доступа к ВКонтакте API. Нажмите на это окно, чтобы разрешить обновить ключ."
+	},
+	"settingsOpenNotification" : {
+		"message" : "При клике на всплывающее окно открывать"
+	},
+	"settingsOpenNotificationOld" : {
+		"message" : "Страницу с сообщением старого типа (не диалог с пользователем)"
+	},
+	"settingsOpenNotificationNew" : {
+		"message" : "Страницу диалога с пользователем"
 	}
 }
