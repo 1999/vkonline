@@ -31,6 +31,10 @@ body {
 	display: table-row;
 }
 
+#data div.trow.hidden {
+	display: none;
+}
+
 #data div.label {
 	width: 210px;
 	display: table-cell;

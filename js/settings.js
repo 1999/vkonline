@@ -1,7 +1,7 @@
 var AppSettings = function() {
 	var self = this,
 		settings,
-		settingsAvailable = {'Status' : 'no', 'Messages' : 'yes', 'SoundLevel' : 0.8, 'Domain' : 'vkontakte.ru', 'OpenNotification' : 'new'};
+		settingsAvailable = {'Status' : 'no', 'Messages' : 'yes', 'SoundLevel' : 0.8, 'Domain' : 'vkontakte.ru', 'OpenNotification' : 'new', 'LookFor' : '[]'};
 	
 	var recalcSettings = function() {
 		try {

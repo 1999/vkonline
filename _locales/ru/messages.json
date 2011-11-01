@@ -61,5 +61,20 @@
 	},
 	"settingsOpenNotificationNew" : {
 		"message" : "Страницу диалога с пользователем"
+	},
+	"settingsLookFor" : {
+		"message" : "Выберите из списка друзей, за статусом которых хотите следить"
+	},
+	"settingsLookForChoose" : {
+		"message" : "Выбрать"
+	},
+	"noInternetConnection" : {
+		"message" : "Отсутствует соединение с интернетом"
+	},
+	"youGuest" : {
+		"message" : "Вы еще не разрешили доступ к своим данным"
+	},
+	"noFriendsAccess" : {
+		"message" : "Вы еще не предоставили расширению доступ к списку своих друзей. Предоставить его сейчас?"
 	}
 }

@@ -206,7 +206,7 @@ HTMLElement.prototype.append = function(elements) {
 };
 
 HTMLElement.prototype.prepend = function(element) {
-	if (this.hasChildNodes() === true) {
+	if (this.hasChildNodes()) {
 		this.insertBefore(element, this.childNodes[0]);
 	} else {
 		this.append(element);

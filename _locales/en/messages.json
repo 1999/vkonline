@@ -61,5 +61,20 @@
 	},
 	"settingsOpenNotificationNew" : {
 		"message" : "Show new-style page with dialog"
+	},
+	"settingsLookFor" : {
+		"message" : "Choose your friends which status changes you want to be notified with"
+	},
+	"settingsLookForChoose" : {
+		"message" : "Choose"
+	},
+	"noInternetConnection" : {
+		"message" : "No internet connection"
+	},
+	"youGuest" : {
+		"message" : "You have not granted access to your data yet"
+	},
+	"noFriendsAccess" : {
+		"message" : "You have not granted access to your friends list yet. Grant it now?"
 	}
 }

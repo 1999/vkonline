@@ -8,9 +8,9 @@
 	var Settings = new AppSettings();
 	
 	var VkAppId = 2642167,
-		VkAppScope = ['messages'];
+		VkAppScope = ['messages', 'friends'];
 	
-	var activeAccount = [false, false];
+	var activeAccount = false;
 	var cachedProfiles = {};
 	
 	var sounds = {
@@ -146,6 +146,7 @@
 									chrome.tabs.create({'url' : 'http://api.' + Settings.Domain + '/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.' + Settings.Domain + '/blank.html&display=page&response_type=token'});
 								}
 								
+								xhr = null;
 								return;
 							}
 							
@@ -162,9 +163,9 @@
 							} else {
 								if (self !== w) {
 									// debug purposes only
-									localStorage.setItem('__badtoken__' + Date.now() + '__' + activeAccount[1], self);
+									localStorage.setItem('__badtoken__' + Date.now() + '__' + activeAccount, self);
 									
-									delete tokens[activeAccount[1]];
+									delete tokens[activeAccount];
 									localStorage.setItem('tokens', JSON.stringify(tokens));
 									
 									chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]})
@@ -237,31 +238,28 @@
 				chrome.browserAction.setBadgeText({'text' : '?'});
 				
 				browserActionClickedAttach('newbie');
+				activeAccount = false;
 			} else {
-				chrome.browserAction.setBadgeText({'text' : '...'});
-				chrome.browserAction.setBadgeBackgroundColor({'color' : [255, 0, 0, 128]})
-				chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('extName')});
-				
-				startUserSession();
-				browserActionClickedAttach('granted');
+				if (activeAccount !== userId) { // смена пользователя
+					activeAccount = userId;
+					
+					chrome.browserAction.setBadgeText({'text' : ''});
+					chrome.browserAction.setBadgeBackgroundColor({'color' : [255, 0, 0, 128]})
+					chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('extName')});
+					
+					browserActionClickedAttach('granted');
+					startUserSession();
+				}
 			}
 		};
 		
 		if (/^id[0-9]+$/.test(nickname)) {
-			if (activeAccount[0] !== nickname) {
-				activeAccount = [nickname, nickname.substr(2)];
-				fn(nickname.substr(2));
-			}
+			fn(nickname.substr(2));
 		} else {
-			if (activeAccount[0] !== nickname) {
-				activeAccount = [nickname, false];
-				
-				// получаем UID
-				req.call(w, 'resolveScreenName', {'screen_name' : nickname}, function(res) {
-					activeAccount[1] = res.object_id.toString();
-					fn(res.object_id.toString());
-				});
-			}
+			// получаем UID
+			req.call(w, 'resolveScreenName', {'screen_name' : nickname}, function(res) {
+				fn(res.object_id.toString());
+			});
 		}
 	};
 	
@@ -294,16 +292,17 @@
 	};
 	
 	var startUserSession = function() {
-		var activeUid = tokens[activeAccount[1]];
+		var activeToken = tokens[activeAccount],
+			activeUid = activeAccount;
 		
-		req.call(activeUid, 'messages.getLongPollServer', function(longPollRes) {
-			if (tokens[activeAccount[1]] !== activeUid) { // проверка на смену пользователя
+		req.call(activeToken, 'messages.getLongPollServer', function(longPollRes) {
+			if (activeUid !== activeAccount) { // проверка на смену пользователя
 				return;
 			}
 			
-			req.call(activeUid, 'messages.get', {'filters' : 1, 'count' : 1}, function(res) {
+			req.call(activeToken, 'messages.get', {'filters' : 1, 'count' : 1}, function(res) {
 				var totalNew = (res.constructor === Array) ? res[0] : 0;
-				if (tokens[activeAccount[1]] !== activeUid) { // проверка на смену пользователя
+				if (activeUid !== activeAccount) { // проверка на смену пользователя
 					return;
 				}
 				
@@ -325,7 +324,7 @@
 					xhr.open('GET', url, true);
 					xhr.onreadystatechange = function() {
 						if (xhr.readyState === 4) {
-							if (tokens[activeAccount[1]] !== activeUid) { // проверка на смену пользователя
+							if (activeUid !== activeAccount) { // проверка на смену пользователя
 								return;
 							}
 							
@@ -439,7 +438,7 @@
 														};
 														
 														if (typeof cachedProfiles[uid] === 'undefined') {
-															req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
+															req.call(activeToken, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
 																cachedProfiles[uid] = res[0];
 																fn();
 															});
@@ -470,8 +469,12 @@
 													return;
 												}
 												
+												if (Settings.LookFor.indexOf(uid) === -1) { // за этим не следим
+													return;
+												}
+												
 												if (typeof cachedProfiles[uid] === 'undefined') {
-													req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
+													req.call(activeToken, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
 														cachedProfiles[uid] = res[0];
 														fn();
 													});
@@ -499,8 +502,12 @@
 													return;
 												}
 												
+												if (Settings.LookFor.indexOf(uid) === -1) { // за этим не следим
+													return;
+												}
+												
 												if (typeof cachedProfiles[uid] === 'undefined') {
-													req.call(activeUid, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
+													req.call(activeToken, 'getProfiles', {'uids' : uid, 'fields' : 'first_name,last_name,sex,photo'}, function(res) {
 														cachedProfiles[uid] = res[0];
 														fn();
 													});
@@ -512,7 +519,7 @@
 										}
 									});
 									
-									if (tokens[activeAccount[1]] !== activeUid) { // проверка на смену пользователя
+									if (activeUid !== activeAccount) { // проверка на смену пользователя
 										return;
 									}
 									
@@ -534,9 +541,7 @@
 	// запускаем при загрузке
 	chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]});
 	chrome.browserAction.setBadgeText({'text' : '...'});
-	whoami(function(nickname) {
-		gotUser(nickname);
-	}, function() {
+	whoami(gotUser, function() {
 		chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]})
 		chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('notAuthorized')});
 		chrome.browserAction.setBadgeText({'text' : 'X'});
@@ -558,7 +563,7 @@
 			
 			case 'state' :
 				if (request.data === false) {
-					activeAccount = [false, false];
+					activeAccount = false;
 					
 					chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]})
 					chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('notAuthorized')});
@@ -586,13 +591,7 @@
 					});
 				});
 				
-				chrome.browserAction.setBadgeText({'text' : ''});
-				chrome.browserAction.setBadgeBackgroundColor({'color' : [255, 0, 0, 128]})
-				chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('extName')});
-				
-				startUserSession();
-				browserActionClickedAttach('granted');
-				
+				gotUser('id' + request.uid);
 				break;
 			
 			case 'auth_fail' :
@@ -606,6 +605,15 @@
 						});
 					});
 				});
+				
+				break;
+			
+			case 'getActiveUserToken' :
+				if (activeAccount === false) {
+					sendResponse(false);
+				} else {
+					sendResponse(tokens[activeAccount]);
+				}
 				
 				break;
 		}
