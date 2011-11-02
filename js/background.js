@@ -271,7 +271,11 @@
 			chrome.tabs.create({'url' : 'http://' + Settings.Domain});
 		},
 		'granted' : function() {
-			chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/mail'});
+			if (Settings.OpenNotification === 'new') {
+				chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/im'});
+			} else {
+				chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/mail'});
+			}
 		},
 		'newbie' : function() {
 			chrome.tabs.create({'url' : 'http://api.' + Settings.Domain + '/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.' + Settings.Domain + '/blank.html&display=page&response_type=token'});
