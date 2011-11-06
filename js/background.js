@@ -113,43 +113,6 @@
 					if (typeof result.error !== 'undefined') {
 						var errorCode = parseInt(result.error.error_code, 10);
 						if (errorCode === 5 || errorCode === 7) {
-							if (result.error.error_msg.indexOf('expired') !== -1) {
-								// открыты ли окна браузера
-								var notificationNeeded = true;
-								chrome.windows.getAll(null, function(windows) {
-									if (windows.length) {
-										notificationNeeded = false;
-									}
-								});
-								
-								if (notificationNeeded) {
-									showNotification.call(w, {
-										'message' : chrome.i18n.getMessage('tokenExpired'),
-										'onclick' : function() {
-											this.cancel();
-											
-											var windowsOpened;
-											chrome.windows.getAll(null, function(windows) {
-												windowsOpened = (windows.length)
-													? true
-													: false;
-											});
-											
-											if (windowsOpened) {
-												chrome.tabs.create({'url' : 'http://api.' + Settings.Domain + '/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.' + Settings.Domain + '/blank.html&display=page&response_type=token'});
-											} else {
-												chrome.windows.create({'url' : 'http://api.' + Settings.Domain + '/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.' + Settings.Domain + '/blank.html&display=page&response_type=token'});
-											}
-										}
-									});
-								} else {
-									chrome.tabs.create({'url' : 'http://api.' + Settings.Domain + '/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.' + Settings.Domain + '/blank.html&display=page&response_type=token'});
-								}
-								
-								xhr = null;
-								return;
-							}
-							
 							if (retry <= 5) {
 								w.setTimeout(function() {
 									if (typeof args.last() !== 'number') {
