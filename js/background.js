@@ -8,7 +8,7 @@
 	var Settings = new AppSettings();
 	
 	var VkAppId = 2642167,
-		VkAppScope = ['messages', 'friends'];
+		VkAppScope = ['messages', 'friends', 'offline'];
 	
 	var activeAccount = false;
 	var cachedProfiles = {};
