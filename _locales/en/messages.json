@@ -50,8 +50,8 @@
 	"settingsDomain" : {
 		"message" : "Domain extension works with"
 	},
-	"tokenExpired" : {
-		"message" : "VK Online extension needs to update VK API access key. Click onto this notification window to update the key right now."
+	"accessOfflineNeeded" : {
+		"message" : "VK Online extension needs to update VK API access rights. Click onto this notification window to update them now"
 	},
 	"settingsOpenNotification" : {
 		"message" : "When notification with a new message is clicked"

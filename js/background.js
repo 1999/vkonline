@@ -196,22 +196,49 @@
 	var gotUser = function(nickname) {
 		var fn = function(userId) {
 			if (typeof tokens[userId] === 'undefined') { // еще нет доступа
-				chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]})
+				chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]});
 				chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('notGranted')});
 				chrome.browserAction.setBadgeText({'text' : '?'});
 				
 				browserActionClickedAttach('newbie');
 				activeAccount = false;
 			} else {
-				if (activeAccount !== userId) { // смена пользователя
-					activeAccount = userId;
-					
-					chrome.browserAction.setBadgeText({'text' : ''});
-					chrome.browserAction.setBadgeBackgroundColor({'color' : [255, 0, 0, 128]})
-					chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('extName')});
-					
-					browserActionClickedAttach('granted');
-					startUserSession();
+				if (activeAccount !== userId) { // смена пользователя или просто его установка из состояния false
+					if (localStorage.getItem('offline_enabled_' + userId) === null) { // приложение обновилось, но возможна ошибка инвалидации token (до версии 2.0.1)
+						chrome.browserAction.setBadgeBackgroundColor({'color' : [128, 128, 128, 128]});
+						chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('notGranted')});
+						chrome.browserAction.setBadgeText({'text' : '?'});
+
+						browserActionClickedAttach('newbie');
+						activeAccount = false;
+						
+						// уведомление о необходимости увеличения прав приложения ВКонтакте
+						showNotification.call(w, {
+							'message' : chrome.i18n.getMessage('accessOfflineNeeded'),
+							'onclick' : function() {
+								this.cancel();
+
+								chrome.windows.getAll(null, function(windows) {
+									var oauthUrl = 'http://api.' + Settings.Domain + '/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.' + Settings.Domain + '/blank.html&display=page&response_type=token';
+									
+									if (windows.length) {
+										chrome.tabs.create({'url' : oauthUrl});
+									} else {
+										chrome.windows.create({'url' : oauthUrl});
+									}
+								});
+							}
+						});
+					} else {
+						chrome.browserAction.setBadgeBackgroundColor({'color' : [255, 0, 0, 128]});
+						chrome.browserAction.setTitle({'title' : chrome.i18n.getMessage('extName')});
+						chrome.browserAction.setBadgeText({'text' : ''});
+						
+						browserActionClickedAttach('granted');
+						activeAccount = userId;
+						
+						startUserSession();
+					}
 				}
 			}
 		};
@@ -558,7 +585,9 @@
 					});
 				});
 				
+				localStorage.setItem('offline_enabled_' + request.uid, 1);
 				gotUser('id' + request.uid);
+				
 				break;
 			
 			case 'auth_fail' :

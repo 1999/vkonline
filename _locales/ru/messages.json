@@ -50,8 +50,8 @@
 	"settingsDomain" : {
 		"message" : "Домен для работы расширения"
 	},
-	"tokenExpired" : {
-		"message" : "Расширению VKontakte Online требуется обновить ключ доступа к ВКонтакте API. Нажмите на это окно, чтобы разрешить обновить ключ."
+	"accessOfflineNeeded" : {
+		"message" : "Расширению VKontakte Online требуется обновить права доступа к ВКонтакте API. Нажмите на это окно, чтобы разрешить это"
 	},
 	"settingsOpenNotification" : {
 		"message" : "При клике на всплывающее окно открывать"
