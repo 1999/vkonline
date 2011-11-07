@@ -5,7 +5,14 @@ var AppSettings = function() {
 	
 	var recalcSettings = function() {
 		try {
+			var key;
+			
 			settings = JSON.parse(localStorage.getItem('settings') || '');
+			for (key in settingsAvailable) {
+				if (settingsAvailable.hasOwnProperty(key) && typeof settings[key] === 'undefined') {
+					settings[key] = settingsAvailable[key];
+				}
+			}
 		} catch (e) {
 			settings = settingsAvailable;
 		}
