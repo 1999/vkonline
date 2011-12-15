@@ -103,7 +103,7 @@ window.onload = function() {
 			var formData = new FormData();
 			formData.append('fields', 'uid,first_name,last_name,photo');
 			
-			if (button.data('temp_token').length) {
+			if ((button.data('temp_token') || '').length) {
 				formData.append('access_token', button.data('temp_token'));
 			} else {
 				formData.append('access_token', token);
