@@ -34,7 +34,7 @@ window.onload = function() {
 			}
 			
 			var xhr = new XMLHttpRequest();
-			xhr.open('POST', 'https://api.' + Settings.Domain + '/method/friends.get', true);
+			xhr.open('POST', 'https://api.vk.com/method/friends.get', true);
 			
 			xhr.onreadystatechange = function() {
 				if (xhr.readyState === 4) {
@@ -53,7 +53,7 @@ window.onload = function() {
 						if (typeof result.error !== 'undefined') {
 							if (result.error.error_code === 7) {
 								if (confirm(chrome.i18n.getMessage('noFriendsAccess'))) {
-									chrome.tabs.create({'url' : 'http://api.' + Settings.Domain + '/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.' + Settings.Domain + '/blank.html&display=page&response_type=token'});
+									chrome.tabs.create({'url' : 'http://api.vk.com/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.vk.com/blank.html&display=page&response_type=token'});
 								}
 							} else {
 								alert(result.error.error_msg);
@@ -173,25 +173,6 @@ window.onload = function() {
 	};
 	
 	slevel.lastChild.append(rangeInput);
-	
-	
-	// домен
-	var domain = $('#data').querySelector('div[data-variable="settingsDomain"]');
-	domain.firstChild.html(chrome.i18n.getMessage('settingsDomain'));
-	
-	select = $('<select>');
-	options = [], optionsData = [['vkontakte.ru', 'vkontakte.ru'], ['vk.com', 'vk.com']];
-	optionsData.forEach(function(data) {
-		var option = $('<option>').val(data[0]).html(data[1]);
-		if (Settings.Domain === data[0]) {
-			option.attr('selected', 'selected');
-		}
-		
-		options.push(option);
-	});
-	
-	select.append(options);
-	domain.lastChild.append(select);
 	
 	
 	// открытие окон уведомлений

@@ -1,6 +1,6 @@
 {
 	"name" : "__MSG_extName__",
-	"version" : "2.0.3",
+	"version" : "2.1",
 	"description" : "__MSG_extDescription__",
 	"default_locale" : "ru",
 	"icons" : {
@@ -15,8 +15,8 @@
 	"background_page" : "background.html",
 	"options_page" : "options.html",
 	"content_scripts" : [{
-		"matches" : ["*://*.vkontakte.ru/*", "*://*.vk.com/*"],
+		"matches" : ["*://*.vk.com/*"],
 		"js" : ["js/contentscript.js"]
 	}], "minimum_chrome_version" : "12",
-	"permissions" : ["background", "unlimitedStorage", "tabs", "notifications", "*://*.vkontakte.ru/*", "*://*.vk.com/*"]
+	"permissions" : ["background", "unlimitedStorage", "tabs", "notifications", "*://*.vk.com/*"]
 }

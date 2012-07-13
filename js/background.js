@@ -83,7 +83,7 @@
 		});
 		
 		var xhr = new XMLHttpRequest();
-		xhr.open('POST', 'https://api.' + Settings.Domain + '/method/' + method, true);
+		xhr.open('POST', 'https://api.vk.com/method/' + method, true);
 		
 		xhr.onreadystatechange = function() {
 			if (xhr.readyState === 4) {
@@ -161,7 +161,7 @@
 		var args = arguments;
 		
 		var xhr = new XMLHttpRequest();
-		xhr.open('GET', 'http://' + Settings.Domain + '/', true);
+		xhr.open('GET', 'http://vk.com/', true);
 		
 		xhr.onreadystatechange = function() {
 			if (xhr.readyState === 4) {
@@ -219,7 +219,7 @@
 								this.cancel();
 
 								chrome.windows.getAll(null, function(windows) {
-									var oauthUrl = 'http://api.' + Settings.Domain + '/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.' + Settings.Domain + '/blank.html&display=page&response_type=token';
+									var oauthUrl = 'http://api.vk.com/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.vk.com/blank.html&display=page&response_type=token';
 									
 									if (windows.length) {
 										chrome.tabs.create({'url' : oauthUrl});
@@ -258,17 +258,17 @@
 	 */
 	var browserActionClickedFn = {
 		'guest' : function() {
-			chrome.tabs.create({'url' : 'http://' + Settings.Domain});
+			chrome.tabs.create({'url' : 'http://vk.com'});
 		},
 		'granted' : function() {
 			if (Settings.OpenNotification === 'new') {
-				chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/im'});
+				chrome.tabs.create({'url' : 'http://vk.com/im'});
 			} else {
-				chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/mail'});
+				chrome.tabs.create({'url' : 'http://vk.com/mail'});
 			}
 		},
 		'newbie' : function() {
-			chrome.tabs.create({'url' : 'http://api.' + Settings.Domain + '/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.' + Settings.Domain + '/blank.html&display=page&response_type=token'});
+			chrome.tabs.create({'url' : 'http://api.vk.com/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.vk.com/blank.html&display=page&response_type=token'});
 		}
 	};
 	
@@ -295,7 +295,7 @@
 			}
 			
 			req.call(activeToken, 'messages.get', {'filters' : 1, 'count' : 1}, function(res) {
-				var totalNew = (res.constructor === Array) ? res[0] : 0;
+				var totalNew = (res instanceof Array) ? res[0] : 0;
 				if (activeUid !== activeAccount) { // проверка на смену пользователя
 					return;
 				}
@@ -312,8 +312,7 @@
 					var callee = arguments.callee;
 					
 					var xhr = new XMLHttpRequest(),
-						server = (Settings.Domain === 'vk.com') ? longPollRes.server.replace('vkontakte.ru', 'vk.com') : longPollRes.server,
-						url = 'http://' + server + '?act=a_check&key=' + longPollRes.key + '&ts=' + longPollRes.ts + '&wait=25&mode=0';
+						url = 'http://' + longPollRes.server + '?act=a_check&key=' + longPollRes.key + '&ts=' + longPollRes.ts + '&wait=25&mode=0';
 					
 					xhr.open('GET', url, true);
 					xhr.onreadystatechange = function() {
@@ -342,24 +341,39 @@
 								if (typeof result.failed !== 'undefined') { // ключ устарел (code 2) или такие старые события LongPoll-сервер уже не отдает
 									w.setTimeout(startUserSession, 1000);
 								} else {
+									var updateCounterOnRead = function(totalNew) {
+										if (totalNew) {
+											chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
+										} else {
+											chrome.browserAction.setBadgeText({'text' : ''});
+										}
+									};
+
 									result.updates.forEach(function(data) {
 										switch (data[0]) {
-											case 2 :
-												if (data[2] & 1) { // отметили как новое
-													totalNew += 1;
-													chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
+											case 2 : // mark as new
+												totalNew += 1;
+												chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
 													
-													sounds.message.play();
-												} else if (data[2] & 256) { // прочитано
-													totalNew -= 1;
-													
-													if (totalNew) {
-														chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
+												sounds.message.play();
+												break;
+
+											case 3 : // mark as read
+												req.call(activeToken, 'messages.getById', {'mid' : data[1]}, function(res) {
+													if (res instanceof Array && res.length === 2) {
+														if (res[1].out === 0) {
+															totalNew -= 1;
+															updateCounterOnRead(totalNew);
+														}
 													} else {
-														chrome.browserAction.setBadgeText({'text' : ''});
+														totalNew -= 1;
+														updateCounterOnRead(totalNew);
 													}
-												}
-												
+												}, function() {
+													totalNew -= 1;
+													updateCounterOnRead(totalNew);
+												});
+
 												break;
 											
 											case 4 :
@@ -417,9 +431,9 @@
 																	this.cancel();
 																	
 																	if (Settings.OpenNotification === 'new') {
-																		chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/im?sel=' + uid});
+																		chrome.tabs.create({'url' : 'http://vk.com/im?sel=' + uid});
 																	} else {
-																		chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/mail?act=show&id=' + data[1]});
+																		chrome.tabs.create({'url' : 'http://vk.com/mail?act=show&id=' + data[1]});
 																	}
 																}
 															};
@@ -450,11 +464,11 @@
 													var i18msg = (cachedProfiles[uid].sex === '1') ? 'isOnlineF' : 'isOnlineM';
 													showNotification.call(cachedProfiles[uid], {
 														'message' : chrome.i18n.getMessage(i18msg),
-														'timeout' : 3,
+														'timeout' : 5,
 														'sound' : 'status',
 														'onclick' : function() {
 															this.cancel();
-															chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/id' + uid});
+															chrome.tabs.create({'url' : 'http://vk.com/id' + uid});
 														}
 													});
 												};
@@ -484,10 +498,10 @@
 													var i18msg = (cachedProfiles[uid].sex === '1') ? 'isOfflineF' : 'isOfflineM';
 													showNotification.call(cachedProfiles[uid], {
 														'message' : chrome.i18n.getMessage(i18msg),
-														'timeout' : 3,
+														'timeout' : 5,
 														'onclick' : function() {
 															this.cancel();
-															chrome.tabs.create({'url' : 'http://' + Settings.Domain + '/id' + uid});
+															chrome.tabs.create({'url' : 'http://vk.com/id' + uid});
 														}
 													});
 												};
@@ -578,7 +592,7 @@
 				chrome.windows.getAll({'populate' : true}, function(windows) {
 					windows.forEach(function(windowElem) {
 						windowElem.tabs.forEach(function(tab) {
-							if (tab.url.indexOf('api.' + Settings.Domain + '/blank.html') !== -1) {
+							if (tab.url.indexOf('api.vk.com/blank.html') !== -1) {
 								chrome.tabs.remove(tab.id);
 							}
 						});
@@ -595,7 +609,7 @@
 				chrome.windows.getAll({'populate' : true}, function(windows) {
 					windows.forEach(function(windowElem) {
 						windowElem.tabs.forEach(function(tab) {
-							if (tab.url.indexOf('api.' + Settings.Domain + '/blank.html') !== -1) {
+							if (tab.url.indexOf('api.vk.com/blank.html') !== -1) {
 								chrome.tabs.remove(tab.id);
 							}
 						});
