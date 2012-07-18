@@ -178,7 +178,7 @@
 					
 					var matches = xhr.responseText.match(/<title>(.*)<\/title>/);
 					if (matches[1].length <= 7) { // беда с кодировкой ВКонтакте, поэтому легче проверить на длину строки
-						var liMatch = xhr.responseText.match(/<li id="myprofile" class="clear_fix">(.*?)<\/li>/);
+						var liMatch = xhr.responseText.match(/<li class="clear_fix">(.*?)<\/li>/);
 						var hrefMatch = liMatch[1].match(/href=".*?"/gm);
 						var nickname = hrefMatch[1].substring(7, hrefMatch[1].length-1);
 						
