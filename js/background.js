@@ -161,35 +161,30 @@
 		var args = arguments;
 		
 		var xhr = new XMLHttpRequest();
+		xhr.responseType = "document";
 		xhr.open('GET', 'http://vk.com/', true);
-		
-		xhr.onreadystatechange = function() {
-			if (xhr.readyState === 4) {
-				if (xhr.status === 0) { // нет соединения с интернетом
-					chrome.browserAction.setIcon({'path' : chrome.extension.getURL('pic/icon19_offline.png')});
-					chrome.browserAction.setBadgeText({'text' : ''});
-					
-					w.setTimeout(function() {
-						whoami.apply(w, args);
-					}, 1000);
-				} else {
-					chrome.browserAction.setIcon({'path' : chrome.extension.getURL('pic/icon19.png')});
-					chrome.browserAction.setBadgeText({'text' : ''});
-					
-					var matches = xhr.responseText.match(/<title>(.*)<\/title>/);
-					if (matches[1].length <= 7) { // беда с кодировкой ВКонтакте, поэтому легче проверить на длину строки
-						var liMatch = xhr.responseText.match(/<li class="clear_fix">(.*?)<\/li>/);
-						var hrefMatch = liMatch[1].match(/href=".*?"/gm);
-						var nickname = hrefMatch[1].substring(7, hrefMatch[1].length-1);
-						
-						fnUser(nickname);
-					} else {
-						fnGuest();
-					}
-				}
+
+		xhr.addEventListener("load", function() {
+			chrome.browserAction.setIcon({'path' : chrome.extension.getURL('pic/icon19.png')});
+			chrome.browserAction.setBadgeText({'text' : ''});
+
+			if (xhr.response.querySelector("title").textContent.length <= 7) { // беда с кодировкой ВКонтакте, поэтому легче проверить на длину строки
+				var nickname = xhr.response.querySelector("#myprofile").getAttribute("href").substr(1);
+				fnUser(nickname);
+			} else {
+				fnGuest();
 			}
-		};
-		
+		}, false);
+
+		xhr.addEventListener("error", function() {
+			chrome.browserAction.setIcon({'path' : chrome.extension.getURL('pic/icon19_offline.png')});
+			chrome.browserAction.setBadgeText({'text' : ''});
+			
+			w.setTimeout(function() {
+				whoami.apply(w, args);
+			}, 1000);
+		}, false);
+
 		xhr.send();
 	};
 	

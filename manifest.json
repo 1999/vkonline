@@ -1,6 +1,6 @@
 {
 	"name" : "__MSG_extName__",
-	"version" : "2.3",
+	"version" : "2.3.1",
 	"description" : "__MSG_extDescription__",
 	"default_locale" : "ru",
 	"icons" : {
@@ -17,6 +17,6 @@
 	"content_scripts" : [{
 		"matches" : ["*://*.vk.com/*"],
 		"js" : ["js/contentscript.js"]
-	}], "minimum_chrome_version" : "12",
+	}], "minimum_chrome_version" : "18",
 	"permissions" : ["background", "unlimitedStorage", "tabs", "notifications", "*://*.vk.com/*"]
 }
