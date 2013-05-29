@@ -63,7 +63,8 @@
 	
 	var req = function(method, params, fnOk, retry) {
 		var args = Array.prototype.slice.call(arguments, 0),
-			self = this;
+			self = this,
+			requestMethod, url;
 		
 		if (typeof params === 'function') {
 			retry = fnOk;
@@ -76,15 +77,17 @@
 		if (this !== w) {
 			params.access_token = this;
 		}
-		
-		var prop, qsa = [], formData = new FormData();
-		Object.keys(params).forEach(function(key) {
-			formData.append(key, params[key]);
-		});
-		
-		var xhr = new XMLHttpRequest();
-		xhr.open('POST', 'https://api.vk.com/method/' + method, true);
-		
+
+		requestMethod = params.method || "POST";
+		delete params.method;
+
+		url = 'https://api.vk.com/method/' + method;
+		if (requestMethod.toUpperCase() === "GET")
+			url += "?" + serialize(params);
+
+		var xhr = new XMLHttpRequest;
+		xhr.open(requestMethod, url, true);
+
 		xhr.onreadystatechange = function() {
 			if (xhr.readyState === 4) {
 				if (xhr.status === 0) { // нет соединения с интернетом
@@ -153,8 +156,20 @@
 				xhr = null;
 			}
 		};
-		
-		xhr.send(formData);
+
+		if (requestMethod.toUpperCase() === "POST") {
+			var prop,
+				qsa = [],
+				formData = new FormData();
+
+			Object.keys(params).forEach(function(key) {
+				formData.append(key, params[key]);
+			});
+
+			xhr.send(formData);
+		} else {
+			xhr.send();
+		}
 	};
 	
 	var whoami = function(fnUser, fnGuest) {
@@ -242,7 +257,7 @@
 			fn(nickname.substr(2));
 		} else {
 			// получаем UID
-			req.call(w, 'resolveScreenName', {'screen_name' : nickname}, function(res) {
+			req.call(w, 'resolveScreenName', {method: 'GET', screen_name: nickname}, function(res) {
 				fn(res.object_id.toString());
 			});
 		}
@@ -593,7 +608,7 @@
 						});
 					});
 				});
-				
+
 				localStorage.setItem('offline_enabled_' + request.uid, 1);
 				gotUser('id' + request.uid);
 				

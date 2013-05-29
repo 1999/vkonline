@@ -419,6 +419,14 @@ Array.prototype.fill = function(length, value) {
 	return this;
 };
 
+serialize = function(obj) {
+	var str = [];
+	for(var p in obj)
+		str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+
+	return str.join("&");
+};
+
 getReady = function(callback) {
 	var successArguments = [null, null];
 	var checkEvery = function(element) {
