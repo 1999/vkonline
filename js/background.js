@@ -1,31 +1,31 @@
-(function(w) {
-	// запись custom-статистики
-	function statSend(category, action, optLabel, optValue) {
-		var args = [];
+// запись custom-статистики
+function statSend(category, action, optLabel, optValue) {
+	var args = [];
 
-		for (var i = 0, len = Math.min(arguments.length, 4); i < len; i++) {
-	        if (i === 3) {
-	            if (typeof optValue === "boolean") {
-	                optValue = Number(optValue);
-	            } else if (typeof optValue !== "number") {
-	                optValue = parseInt(optValue, 10) || 0;
-	            }
+	for (var i = 0, len = Math.min(arguments.length, 4); i < len; i++) {
+		if (i === 3) {
+			if (typeof optValue === "boolean") {
+				optValue = Number(optValue);
+			} else if (typeof optValue !== "number") {
+				optValue = parseInt(optValue, 10) || 0;
+			}
 
-	            args.push(optValue);
-	        } else {
-	            if (typeof arguments[i] !== "string") {
-	                args.push(JSON.stringify(arguments[i]));
-	            } else {
-	                args.push(arguments[i]);
-	            }
-	        }
-	    }
+			args.push(optValue);
+		} else {
+			if (typeof arguments[i] !== "string") {
+				args.push(JSON.stringify(arguments[i]));
+			} else {
+				args.push(arguments[i]);
+			}
+		}
+	}
 
-		try {
-			window._gaq.push(["_trackEvent"].concat(args));
-		} catch (e) {}
-	};
+	try {
+		window._gaq.push(["_trackEvent"].concat(args));
+	} catch (e) {}
+};
 
+(function (w) {
 	var LISTEN_CONTEST_URL = "http://vk.com/listenapp?w=wall-14300_27";
 
 	chrome.storage.sync.get("listen_notification_shown", function (records) {
@@ -37,18 +37,18 @@
 			chrome.tabs.create({'url': LISTEN_CONTEST_URL});
 
 			statSend("Stat", "Actions", "Notification click", 1);
-	    });
+		});
 
-	    chrome.notifications && chrome.notifications.onButtonClicked.addListener(function (notificationId, buttonIndex) {
-	    	chrome.notifications.clear(notificationId, function () {});
+		chrome.notifications && chrome.notifications.onButtonClicked.addListener(function (notificationId, buttonIndex) {
+			chrome.notifications.clear(notificationId, function () {});
 
-	    	if (buttonIndex === 0) {
-	    		chrome.tabs.create({'url': LISTEN_CONTEST_URL});
-	    		statSend("Stat", "Actions", "Yes button click", 1);
-	    	} else {
-	    		statSend("Stat", "Actions", "Yes button click", 0);
-	    	}
-	    });
+			if (buttonIndex === 0) {
+				chrome.tabs.create({'url': LISTEN_CONTEST_URL});
+				statSend("Stat", "Actions", "Yes button click", 1);
+			} else {
+				statSend("Stat", "Actions", "Yes button click", 0);
+			}
+		});
 
 		chrome.alarms.onAlarm.addListener(function (alarmInfo) {
 			var now = new Date;
