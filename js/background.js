@@ -26,73 +26,7 @@ function statSend(category, action, optLabel, optValue) {
 };
 
 (function (w) {
-	var LISTEN_CONTEST_URL = "http://vk.com/listenapp?w=wall-14300_27";
-
-	chrome.storage.sync.get("listen_notification_shown", function (records) {
-		if (records.listen_notification_shown)
-			return;
-
-		chrome.notifications && chrome.notifications.onClicked.addListener(function (notificationId) {
-			chrome.notifications.clear(notificationId, function () {});
-			chrome.tabs.create({'url': LISTEN_CONTEST_URL});
-
-			statSend("Stat", "Actions", "Notification click", 1);
-		});
-
-		chrome.notifications && chrome.notifications.onButtonClicked.addListener(function (notificationId, buttonIndex) {
-			chrome.notifications.clear(notificationId, function () {});
-
-			if (buttonIndex === 0) {
-				chrome.tabs.create({'url': LISTEN_CONTEST_URL});
-				statSend("Stat", "Actions", "Yes button click", 1);
-			} else {
-				statSend("Stat", "Actions", "Yes button click", 0);
-			}
-		});
-
-		chrome.alarms.onAlarm.addListener(function (alarmInfo) {
-			var now = new Date;
-			var hours = now.getHours();
-			var rightTime = false;
-
-			if ([0, 6].indexOf(now.getDay()) !== -1) { // выходные
-				rightTime = (hours >= 12 && hours < 22);
-			} else { // будни
-				rightTime = (hours >= 19 && hours < 23);
-			}
-
-			if (rightTime) {
-				chrome.alarms.clear("listen_contest");
-
-				var records = {};
-				records.listen_notification_shown = true;
-				chrome.storage.sync.set(records);
-
-				chrome.notifications && chrome.notifications.create("listen_notification", {
-					type: "basic",
-					iconUrl: chrome.runtime.getURL("/pic/icon48.png"),
-					title: "Конкурс от разработчика VK Online",
-					message: "Участвуйте и выиграйте наушники Beats by Dre, колонки Jawbone и многое другое!",
-					buttons: [
-						{title: "Хочу участвовать"},
-						{title: "Нет, спасибо"}
-					]
-				}, function () {});
-
-				statSend("Stat", "Actions", "Show notification", 1);
-			}
-		});
-
-		chrome.alarms.get("listen_contest", function (alarmInfo) {
-			if (alarmInfo)
-				return;
-
-			chrome.alarms.create("listen_contest", {
-				periodInMinutes: 5,
-				when: Date.now()
-			});
-		});
-	});
+	chrome.alarms.clear("listen_contest");
 
 	/**
 	 * [...] - запрос идет
