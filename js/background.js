@@ -67,6 +67,10 @@ function statSend(category, action, optLabel, optValue) {
 			author = (person === w) ? 'Внимание' : person.first_name + ' ' + person.last_name,
 			message = data.message.replace(/<br\s*\/?>/mg, ' ');
 
+		// FIXME: use chrome.notifications
+		if (!window.webkitNotifications)
+			return;
+
 		var notification = window.webkitNotifications.createNotification(photo, author, message);
 		notification.onclick = function() {
 			if (typeof data.onclick === 'function') {
