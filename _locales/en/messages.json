@@ -1,4 +1,7 @@
 {
+	"attention": {
+		"message": "Attention"
+	},
 	"extName" : {
 		"message" : "VK Online"
 	},

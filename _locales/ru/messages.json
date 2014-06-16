@@ -1,4 +1,7 @@
 {
+	"attention": {
+		"message": "Внимание"
+	},
 	"extName" : {
 		"message" : "VKontakte Online"
 	},

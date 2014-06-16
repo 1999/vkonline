@@ -1,6 +1,6 @@
 {
 	"name" : "__MSG_extName__",
-	"version" : "2.3.9",
+	"version" : "2.4",
 	"description" : "__MSG_extDescription__",
 	"default_locale" : "ru",
 	"icons" : {
@@ -32,7 +32,9 @@
         "storage",
         "tabs",
         "unlimitedStorage",
-        "*://*.vk.com/*"
+        "*://*.userapi.com/*",
+        "*://*.vk.me/*",
+        "*://*.vk.me/*"
     ],
     "content_scripts" : [{
 		"matches" : ["*://*.vk.com/*"],

@@ -47,6 +47,18 @@ function statSend(category, action, optLabel, optValue) {
 	var activeAccount = false;
 	var cachedProfiles = {};
 
+	var notificationHandlers = {};
+	var noop = function () {}
+	chrome.notifications.onClicked.addListener(function notificationHandler(notificationId) {
+		if (!notificationHandlers[notificationId])
+			return;
+
+		chrome.notifications.clear(notificationId, noop);
+		notificationHandlers[notificationId]();
+
+		delete notificationHandlers[notificationId];
+	});
+
 	var sounds = {
 		'message' : (new Audio).attr('src', chrome.extension.getURL('sound/message.mp3')),
 		'status' : (new Audio).attr('src', chrome.extension.getURL('sound/status.mp3')),
@@ -66,37 +78,39 @@ function statSend(category, action, optLabel, optValue) {
 	/**
 	 * Открытие notification
 	 */
-	var showNotification = function (data) {
-		var person = this,
-			photo = (person === w) ? chrome.extension.getURL('pic/icon50_offline.png') : person.photo,
-			author = (person === w) ? 'Внимание' : person.first_name + ' ' + person.last_name,
-			message = data.message.replace(/<br\s*\/?>/mg, ' ');
+	function showNotification(data, uid) {
+		var notificationId = Math.random() + '';
+		var userData = uid ? cachedProfiles[uid] : null;
+		var photo = uid ? userData.photo : chrome.runtime.getURL('pic/icon50_offline.png');
+		var author = uid ? userData.first_name + ' ' + userData.last_name : chrome.i18n.getMessage('attention');
+		var message = data.message.replace(/<br\s*\/?>/mg, ' ');
 
-		// FIXME: use chrome.notifications
-		if (!window.webkitNotifications)
+		// Linux? Didn't hear
+		// @see https://developer.chrome.com/extensions/notifications
+		if (!chrome.notifications)
 			return;
 
-		var notification = window.webkitNotifications.createNotification(photo, author, message);
-		notification.onclick = function() {
-			if (typeof data.onclick === 'function') {
-				data.onclick.call(notification);
-			} else {
-				notification.cancel();
+		chrome.notifications.create(notificationId, {
+			type: 'basic',
+			iconUrl: photo,
+			title: author,
+			message: message,
+			isClickable: true
+		}, function (notificationId) {
+			if (data.onclick) {
+				notificationHandlers[notificationId] = data.onclick;
 			}
-		};
 
-		notification.show();
+			if (data.sound) {
+				sounds[data.sound].play();
+			}
 
-		// play sound
-		if (typeof data.sound !== 'undefined') {
-			sounds[data.sound].play();
-		}
-
-		if (typeof data.timeout !== 'undefined') {
-			w.setTimeout(function() {
-				notification.cancel();
-			}, data.timeout*1000);
-		}
+			if (data.timeout) {
+				setTimeout(function () {
+					chrome.notifications.clear(notificationId, noop);
+				}, data.timeout * 1000);
+			}
+		});
 	};
 
 	var req = function(method, params, fnOk, retry) {
@@ -261,18 +275,16 @@ function statSend(category, action, optLabel, optValue) {
 						activeAccount = false;
 
 						// уведомление о необходимости увеличения прав приложения ВКонтакте
-						showNotification.call(w, {
-							'message' : chrome.i18n.getMessage('accessOfflineNeeded'),
-							'onclick' : function() {
-								this.cancel();
-
+						showNotification({
+							message: chrome.i18n.getMessage('accessOfflineNeeded'),
+							onclick: function () {
 								chrome.windows.getAll(null, function(windows) {
 									var oauthUrl = 'http://api.vk.com/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.vk.com/blank.html&display=page&response_type=token';
 
 									if (windows.length) {
-										chrome.tabs.create({'url' : oauthUrl});
+										chrome.tabs.create({url: oauthUrl});
 									} else {
-										chrome.windows.create({'url' : oauthUrl});
+										chrome.windows.create({url: oauthUrl});
 									}
 								});
 							}
@@ -309,11 +321,7 @@ function statSend(category, action, optLabel, optValue) {
 			chrome.tabs.create({'url' : 'http://vk.com'});
 		},
 		'granted' : function() {
-			if (Settings.OpenNotification === 'new') {
-				chrome.tabs.create({'url' : 'http://vk.com/im'});
-			} else {
-				chrome.tabs.create({'url' : 'http://vk.com/mail'});
-			}
+			chrome.tabs.create({'url' : 'http://vk.com/im'});
 		},
 		'newbie' : function() {
 			chrome.tabs.create({'url' : 'http://api.vk.com/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.vk.com/blank.html&display=page&response_type=token'});
@@ -468,29 +476,18 @@ function statSend(category, action, optLabel, optValue) {
 
 														var uid = data[3];
 														var fn = function() {
-															if (needsNotify === false) {
+															if (!needsNotify) {
 																return;
 															}
 
-															var notificationData = {
-																'message' : data[6],
-																'timeout' : 7,
-																'onclick' : function() {
-																	this.cancel();
-
-																	if (Settings.OpenNotification === 'new') {
-																		chrome.tabs.create({'url' : 'http://vk.com/im?sel=' + uid});
-																	} else {
-																		chrome.tabs.create({'url' : 'http://vk.com/mail?act=show&id=' + data[1]});
-																	}
+															showNotification({
+																message: data[6],
+																sound: playSound ? 'message' : null,
+																timeout: 7,
+																onclick: function () {
+																	chrome.tabs.create({'url' : 'http://vk.com/im?sel=' + uid});
 																}
-															};
-
-															if (playSound) {
-																notificationData.sound = 'message';
-															}
-
-															showNotification.call(cachedProfiles[uid], notificationData);
+															}, uid);
 														};
 
 														if (typeof cachedProfiles[uid] === 'undefined') {
@@ -510,15 +507,14 @@ function statSend(category, action, optLabel, optValue) {
 												var uid = -data[1];
 												var fn = function() {
 													var i18msg = (cachedProfiles[uid].sex === '1') ? 'isOnlineF' : 'isOnlineM';
-													showNotification.call(cachedProfiles[uid], {
-														'message' : chrome.i18n.getMessage(i18msg),
-														'timeout' : 5,
-														'sound' : 'status',
-														'onclick' : function() {
-															this.cancel();
-															chrome.tabs.create({'url' : 'http://vk.com/id' + uid});
+													showNotification({
+														message: chrome.i18n.getMessage(i18msg),
+														timeout: 5,
+														sound: 'status',
+														onclick: function () {
+															chrome.tabs.create({url: 'http://vk.com/id' + uid});
 														}
-													});
+													}, uid);
 												};
 
 												if (Settings.Status === 'no') { // настройки
@@ -544,14 +540,13 @@ function statSend(category, action, optLabel, optValue) {
 												var uid = -data[1];
 												var fn = function() {
 													var i18msg = (cachedProfiles[uid].sex === '1') ? 'isOfflineF' : 'isOfflineM';
-													showNotification.call(cachedProfiles[uid], {
-														'message' : chrome.i18n.getMessage(i18msg),
-														'timeout' : 5,
-														'onclick' : function() {
-															this.cancel();
-															chrome.tabs.create({'url' : 'http://vk.com/id' + uid});
+													showNotification({
+														message: chrome.i18n.getMessage(i18msg),
+														timeout: 5,
+														onclick: function () {
+															chrome.tabs.create({url: 'http://vk.com/id' + uid});
 														}
-													});
+													}, uid);
 												};
 
 												if (Settings.Status === 'no') { // настройки
