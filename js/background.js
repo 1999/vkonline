@@ -1,3 +1,8 @@
+window.onerror = function (msg, url, line) {
+	var msgError = msg + ' in ' + url + ' (line: ' + line + ')';
+	alert(msgError);
+}
+
 // запись custom-статистики
 function statSend(category, action, optLabel, optValue) {
 	var args = [];
@@ -61,7 +66,7 @@ function statSend(category, action, optLabel, optValue) {
 	/**
 	 * Открытие notification
 	 */
-	var showNotification = function(data) {
+	var showNotification = function (data) {
 		var person = this,
 			photo = (person === w) ? chrome.extension.getURL('pic/icon50_offline.png') : person.photo,
 			author = (person === w) ? 'Внимание' : person.first_name + ' ' + person.last_name,
@@ -671,9 +676,4 @@ function statSend(category, action, optLabel, optValue) {
 				break;
 		}
 	});
-
-
-	w.onerror = function(msg, url, line) {
-		alert(msg + ' (line: ' + line + ')');
-	};
 })(window);
