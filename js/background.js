@@ -195,6 +195,8 @@ function statSend(category, action, optLabel, optValue) {
 									alert('uncaught error: ' + result.error.error_code);
 								}
 							}
+						} else if (errorCode === 6) {
+							chrome.browserAction.setBadgeText({'text' : ''});
 						} else {
 							alert('uncaught error: ' + result.error.error_code);
 						}
