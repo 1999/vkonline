@@ -402,6 +402,10 @@ function statSend(category, action, optLabel, optValue) {
 									w.setTimeout(startUserSession, 1000);
 								} else {
 									var updateCounterOnRead = function(totalNew) {
+                                        if (totalNew) {
+                                            totalNew = Math.max(totalNew, 0);
+                                        }
+
 										if (totalNew) {
 											chrome.browserAction.setBadgeText({'text' : totalNew.toString()});
 										} else {
@@ -571,6 +575,11 @@ function statSend(category, action, optLabel, optValue) {
 												}
 
 												break;
+
+                                            case 80:
+                                                totalNew = Math.max(data[1], 0);
+                                                updateCounterOnRead(totalNew);
+                                                break;
 										}
 									});
 
