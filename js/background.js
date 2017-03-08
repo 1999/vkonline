@@ -231,7 +231,7 @@ function statSend(category, action, optLabel, optValue) {
 
 		var xhr = new XMLHttpRequest();
 		xhr.responseType = "document";
-		xhr.open('GET', 'http://vk.com/', true);
+		xhr.open('GET', 'https://vk.com/', true);
 
 		xhr.addEventListener("load", function() {
 			chrome.browserAction.setIcon({'path' : chrome.extension.getURL('pic/icon19.png')});
@@ -283,7 +283,7 @@ function statSend(category, action, optLabel, optValue) {
 							message: chrome.i18n.getMessage('accessOfflineNeeded'),
 							onclick: function () {
 								chrome.windows.getAll(null, function(windows) {
-									var oauthUrl = 'http://api.vk.com/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.vk.com/blank.html&display=page&response_type=token';
+									var oauthUrl = 'https://api.vk.com/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=https://api.vk.com/blank.html&display=page&response_type=token';
 
 									if (windows.length) {
 										chrome.tabs.create({url: oauthUrl});
@@ -322,13 +322,13 @@ function statSend(category, action, optLabel, optValue) {
 	 */
 	var browserActionClickedFn = {
 		'guest' : function() {
-			chrome.tabs.create({'url' : 'http://vk.com'});
+			chrome.tabs.create({'url' : 'https://vk.com'});
 		},
 		'granted' : function() {
-			chrome.tabs.create({'url' : 'http://vk.com/im'});
+			chrome.tabs.create({'url' : 'https://vk.com/im'});
 		},
 		'newbie' : function() {
-			chrome.tabs.create({'url' : 'http://api.vk.com/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=http://api.vk.com/blank.html&display=page&response_type=token'});
+			chrome.tabs.create({'url' : 'https://api.vk.com/oauth/authorize?client_id=' + VkAppId + '&scope=' + VkAppScope.join(',') + '&redirect_uri=https://api.vk.com/blank.html&display=page&response_type=token'});
 		}
 	};
 
@@ -372,7 +372,7 @@ function statSend(category, action, optLabel, optValue) {
 					var callee = arguments.callee;
 
 					var xhr = new XMLHttpRequest(),
-						url = 'http://' + longPollRes.server + '?act=a_check&key=' + longPollRes.key + '&ts=' + longPollRes.ts + '&wait=25&mode=0';
+						url = 'https://' + longPollRes.server + '?act=a_check&key=' + longPollRes.key + '&ts=' + longPollRes.ts + '&wait=25&mode=0';
 
 					xhr.open('GET', url, true);
 					xhr.onreadystatechange = function() {
@@ -493,7 +493,7 @@ function statSend(category, action, optLabel, optValue) {
 																sound: playSound ? 'message' : null,
 																timeout: 7,
 																onclick: function () {
-																	chrome.tabs.create({'url' : 'http://vk.com/im?sel=' + uid});
+																	chrome.tabs.create({'url' : 'https://vk.com/im?sel=' + uid});
 																}
 															}, uid);
 														};
@@ -520,7 +520,7 @@ function statSend(category, action, optLabel, optValue) {
 														timeout: 5,
 														sound: 'status',
 														onclick: function () {
-															chrome.tabs.create({url: 'http://vk.com/id' + uid});
+															chrome.tabs.create({url: 'https://vk.com/id' + uid});
 														}
 													}, uid);
 												};
@@ -552,7 +552,7 @@ function statSend(category, action, optLabel, optValue) {
 														message: chrome.i18n.getMessage(i18msg),
 														timeout: 5,
 														onclick: function () {
-															chrome.tabs.create({url: 'http://vk.com/id' + uid});
+															chrome.tabs.create({url: 'https://vk.com/id' + uid});
 														}
 													}, uid);
 												};
